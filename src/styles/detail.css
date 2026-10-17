@@ -72,3 +72,34 @@ body:not([data-mode="overview"]) #timeline-region {
   border-color: var(--color-border-strong);
   color: var(--color-ink);
 }
+
+/*
+ * Mobile detail (TASK-033, Sections 6.4 and 6.9): the desktop pin
+ * cannot work for the vertical timeline — it is taller than the
+ * viewport, so pinning its bottom covers the whole composition
+ * (found during TASK-032's verification). On mobile the timeline
+ * therefore sits in flow below the gallery, still present and usable,
+ * while the detail header becomes the sticky region: the selected date
+ * and the close control stay visible and reachable as the gallery
+ * scrolls. `svh` is layered over `vh` so the dynamic mobile toolbars
+ * do not make the min-height jump as they collapse.
+ */
+@media (max-width: 639.98px) {
+  body:not([data-mode="overview"]) main {
+    min-height: 70vh;
+    min-height: 70svh;
+  }
+
+  body:not([data-mode="overview"]) #timeline-region {
+    position: static;
+    background: none;
+  }
+
+  .project-detail__header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--color-bg);
+    padding-block: var(--space-4);
+  }
+}

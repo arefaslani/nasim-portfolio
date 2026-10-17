@@ -1519,11 +1519,17 @@ The plan must be committed to version control alongside implementation changes.
 - Coordinate document scrolling with mobile browser viewport behavior.
 
 **Acceptance criteria:**
-- [ ] The intro appears first in the mobile overview.
-- [ ] Opening a project hides the intro from the visible composition.
-- [ ] The vertical timeline remains available during project detail.
-- [ ] The gallery fits narrow screens.
-- [ ] Closing restores the expected overview position.
+- [x] The intro appears first in the mobile overview. — DOM order (header → main → nav) plus the mobile stacked intro (intro.css) put the introduction above the timeline; verified at 390×844 that the intro's bottom edge meets the timeline's top exactly.
+- [x] Opening a project hides the intro from the visible composition. — The TASK-025 choreography works unchanged at mobile heights: after opening, the intro's bottom sits 25px below the viewport top (≤ the bottom-tenth target) with `data-hidden="true"` (opacity 0.35 ghost); verified in the browser.
+- [x] The vertical timeline remains available during project detail. — On mobile the desktop pin is replaced by flow placement: `#timeline-region` is `position: static` in detail mode, sitting immediately below the gallery (timeline top == detail bottom, browser-measured), still rendered and usable — a marker tap from below the gallery switches projects directly, updating the date.
+- [x] The gallery fits narrow screens. — Single-column mosaic (TASK-028) verified in mobile detail: `scrollWidth` 390 == `innerWidth` 390, mosaic 358px within the gutters.
+- [x] Closing restores the expected overview position. — Close returns `scrollY` to 0, mode to `overview`, and the intro to `data-hidden="false"`; verified by tap.
+
+**Implementation notes (TASK-033):**
+- The TASK-032 finding is resolved: on mobile the sticky-pinned vertical timeline (taller than the viewport, so pinning its bottom covered the whole composition) becomes in-flow below the gallery, and the **detail header** becomes the sticky region instead (`position: sticky; top: 0` with an opaque background): the selected date and the 44px close control stay visible and pointer-reachable while the gallery scrolls (close-button hit-test now returns the button itself).
+- Mobile-viewport scrolling coordination: `main`'s detail-mode `min-height` layers `70svh` over `70vh` so collapsing mobile toolbars don't make the composition jump (Section 6.9).
+- Tablet (640–1023px) keeps the desktop sticky-bottom pin — the horizontal timeline is short enough to pin.
+- Verification: headless-Chromium pass at 390×844 — 15/15 checks, no console errors; mobile detail screenshot reviewed.
 
 ### TASK-034 — Complete keyboard and focus behavior
 
