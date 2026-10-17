@@ -1399,11 +1399,17 @@ The plan must be committed to version control alongside implementation changes.
 - Prevent overflow and excessive layout shifts.
 
 **Acceptance criteria:**
-- [ ] The gallery looks editorial rather than uniformly tiled.
-- [ ] Tile sizes vary intentionally.
-- [ ] Images preserve their intended proportions.
-- [ ] Text tiles remain legible.
-- [ ] The layout remains usable at all target viewport sizes.
+- [x] The gallery looks editorial rather than uniformly tiled. — `gallery.css` composes the tiles in a 6-column CSS Grid with `grid-auto-flow: dense`; image tiles cycle large → small → medium → medium → full-width, text tiles alternate wide/narrow (`IMAGE_SIZE_CYCLE`/`TEXT_SIZE_CYCLE` in `ProjectGallery.ts`), so image-heavy and text-heavy projects both produce varied compositions.
+- [x] Tile sizes vary intentionally. — Size classes come from fixed deterministic cycles (index modulo), never per-render randomness (Section 6.5); unit tests pin the cycle, its repetition, and re-render identity.
+- [x] Images preserve their intended proportions. — Each size class defines a fixed aspect-ratio frame (21/9 full, 16/10 large, 4/3 medium, 1/1 small) with `object-fit: cover`, so tile dimensions are final before images load — no layout shift from image timing (Section 8.4).
+- [x] Text tiles remain legible. — Filenames render in the mono label style with `overflow-wrap: anywhere` (long names wrap, never overflow), tiles have a designed minimum height, and the label sits at the tile's baseline edge.
+- [x] The layout remains usable at all target viewport sizes. — Tablet (640–1023px) uses two columns (large/medium/wide/full take the full row, small/narrow pair up); mobile (<640px) collapses to a single column. Browser-verified at 1440×900 and 390×844: zero horizontal overflow at both sizes, no page errors.
+
+**Implementation notes (TASK-028):**
+- The grid uses spans that are multiples of 2 (4/3/2 and full) so patterns tile rows cleanly; `dense` flow absorbs the remainder of mixed compositions.
+- `min-width: 0` on tiles prevents grid items from refusing to shrink below their content width.
+- Screenshots reviewed at 1440×900 and 390×844; measured text-tile min-height applies (144px at desktop).
+- 189/189 tests pass, `tsc --noEmit` clean.
 
 ### TASK-029 — Implement the image viewer
 

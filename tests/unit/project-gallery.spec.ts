@@ -92,6 +92,57 @@ describe("groupGalleryTiles (Section 4.3 pairing)", () => {
   });
 });
 
+describe("mosaic size cycle (TASK-028)", () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <main><section id="project-detail"><div id="mosaic" class="mosaic"></div></section></main>
+    `;
+  });
+
+  it("assigns size classes on a fixed deterministic cycle", () => {
+    renderMosaic(
+      doc,
+      project([asset("image", "a.png"), asset("image", "b.png"), asset("image", "c.png"), asset("image", "d.png"), asset("image", "e.png"), asset("image", "f.png")]),
+      { onOpenImage: () => {}, onOpenText: () => {} },
+    );
+    const sizes = [...doc.querySelectorAll("#mosaic .mosaic__tile")].map((tile) =>
+      [...tile.classList]
+        .find((cls) => cls.startsWith("mosaic__tile--") && !cls.endsWith("--image")),
+    );
+    // large, small, medium, medium, full, then the cycle repeats.
+    expect(sizes).toEqual([
+      "mosaic__tile--large",
+      "mosaic__tile--small",
+      "mosaic__tile--medium",
+      "mosaic__tile--medium",
+      "mosaic__tile--full",
+      "mosaic__tile--large",
+    ]);
+  });
+
+  it("text tiles cycle their own widths independently of images", () => {
+    renderMosaic(
+      doc,
+      project([asset("text", "a.txt"), asset("text", "b.md"), asset("text", "c.txt")]),
+      { onOpenImage: () => {}, onOpenText: () => {} },
+    );
+    const sizes = [...doc.querySelectorAll("#mosaic .mosaic__tile")].map((tile) =>
+      [...tile.classList].find((cls) => cls.endsWith("--wide") || cls.endsWith("--narrow")),
+    );
+    expect(sizes).toEqual(["mosaic__tile--wide", "mosaic__tile--narrow", "mosaic__tile--wide"]);
+  });
+
+  it("the same project renders the identical composition on re-render", () => {
+    const testProject = project([asset("image", "a.png"), asset("text", "b.txt"), asset("image", "c.png")]);
+    const handlers = { onOpenImage: () => {}, onOpenText: () => {} };
+    renderMosaic(doc, testProject, handlers);
+    const first = [...doc.querySelectorAll("#mosaic .mosaic__tile")].map((t) => t.className);
+    renderMosaic(doc, testProject, handlers);
+    const second = [...doc.querySelectorAll("#mosaic .mosaic__tile")].map((t) => t.className);
+    expect(second).toEqual(first);
+  });
+});
+
 describe("renderMosaic (TASK-027)", () => {
   beforeEach(() => {
     document.body.innerHTML = `

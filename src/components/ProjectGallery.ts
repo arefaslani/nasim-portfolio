@@ -25,6 +25,15 @@ export function baseName(fileName: string): string {
 }
 
 /**
+ * Deterministic editorial composition (TASK-028, Section 6.5): tile
+ * size classes repeat on fixed cycles, so the same project always
+ * renders the same art-directed arrangement — varied sizes, occasional
+ * full-width features, never per-render randomness.
+ */
+const IMAGE_SIZE_CYCLE = ["large", "small", "medium", "medium", "full"] as const;
+const TEXT_SIZE_CYCLE = ["wide", "narrow"] as const;
+
+/**
  * Group a project's assets into tiles, preserving the manifest's
  * deterministic filename order. A text asset pairs with the first
  * image sharing its basename — regardless of file order — and each
@@ -104,14 +113,20 @@ export function renderMosaic(
   if (mosaic === null) return;
 
   let renderedImage = false; // the first image loads eagerly
+  let imageOrdinal = 0;
+  let textOrdinal = 0;
   mosaic.replaceChildren(
     ...groupGalleryTiles(project).map((tile) => {
       if (tile.kind === "image") {
-        const element = createImageTile(doc, tile, renderedImage, handlers);
+        const size = IMAGE_SIZE_CYCLE[imageOrdinal % IMAGE_SIZE_CYCLE.length]!;
+        imageOrdinal += 1;
+        const element = createImageTile(doc, tile, renderedImage, size, handlers);
         renderedImage = true;
         return element;
       }
-      return createTextTile(doc, tile, handlers);
+      const size = TEXT_SIZE_CYCLE[textOrdinal % TEXT_SIZE_CYCLE.length]!;
+      textOrdinal += 1;
+      return createTextTile(doc, tile, size, handlers);
     }),
   );
 }
@@ -120,10 +135,11 @@ function createImageTile(
   doc: Document,
   tile: Extract<GalleryTile, { kind: "image" }>,
   alreadyRenderedImage: boolean,
+  size: (typeof IMAGE_SIZE_CYCLE)[number],
   handlers: GalleryHandlers,
 ): HTMLElement {
   const figure = doc.createElement("figure");
-  figure.className = "mosaic__tile mosaic__tile--image";
+  figure.className = `mosaic__tile mosaic__tile--image mosaic__tile--${size}`;
 
   const frame = doc.createElement("button");
   frame.type = "button";
@@ -165,11 +181,12 @@ function createImageTile(
 function createTextTile(
   doc: Document,
   tile: Extract<GalleryTile, { kind: "text" }>,
+  size: (typeof TEXT_SIZE_CYCLE)[number],
   handlers: GalleryHandlers,
 ): HTMLElement {
   const button = doc.createElement("button");
   button.type = "button";
-  button.className = "mosaic__tile mosaic__tile--text";
+  button.className = `mosaic__tile mosaic__tile--text mosaic__tile--${size}`;
   button.setAttribute("aria-label", `Open text file ${tile.asset.name}`);
 
   // The filename labels the tile (Section 4.3). No preview is fetched
