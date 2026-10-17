@@ -1059,12 +1059,12 @@ The plan must be committed to version control alongside implementation changes.
 - Produce `dist/index.html`.
 
 **Acceptance criteria:**
-- [ ] A clean build generates a deployable `dist/`.
-- [ ] The final HTML contains the required application code.
-- [ ] The manifest is available without a runtime build step.
-- [ ] All referenced static assets exist in the output.
-- [ ] Build failures are explicit and actionable.
-- [ ] Running the build twice yields equivalent output.
+- [x] A clean build generates a deployable `dist/`. — `dist/index.html` plus `assets/profile.webp` and `projects/<date>/…`, built from a temp root in integration tests with no local state.
+- [x] The final HTML contains the required application code. — Bundled (minified, esbuild) JS and concatenated CSS are inlined; contract verified by integration tests.
+- [x] The manifest is available without a runtime build step. — Embedded safely via `safeJsonForHtml` into the non-executable `#app-data` element; every `{{token}}` is replaced.
+- [x] All referenced static assets exist in the output. — Exactly the manifest-referenced files (featured image + gallery assets) are copied; unsupported files, hidden files, and `0.txt` are excluded.
+- [x] Build failures are explicit and actionable. — Profile problems, invalid project folders, and bad base paths exit 1 with named diagnostics (integration-tested).
+- [x] Running the build twice yields equivalent output. — Integration test compares file lists, sizes, and contents across repeated builds.
 
 ### TASK-013 — Implement base-path support
 

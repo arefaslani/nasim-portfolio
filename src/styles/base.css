@@ -1,0 +1,31 @@
+/*
+ * Base styles (placeholder — TASK-015 defines the real token set and
+ * TASK-016 the full base layout). Present so the build pipeline inlines
+ * real CSS from the first working build.
+ */
+:root {
+  --page-max-width: 72rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+}
+
+.skip-link:focus-visible {
+  left: 1rem;
+  top: 1rem;
+  background: white;
+  padding: 0.5rem 1rem;
+}
