@@ -17,11 +17,12 @@
   list-style: none;
   margin: 0;
   padding: var(--space-4) var(--page-gutter) var(--space-4);
-  /* Fit the content when it is narrow, but never exceed the viewport:
-     max-content lets the rule line span the content; the max-width cap
-     is what makes the container actually scroll when content is wide. */
+  /* Fit the content when it is narrow (centered via auto margins), but
+     never exceed the viewport: the max-width cap is what makes the
+     container actually scroll when content is wide. */
   width: max-content;
   max-width: 100%;
+  margin-inline: auto;
   overflow-x: auto;
   position: relative;
   /* Native scrollbar hidden deliberately (Section 6.2); drag and wheel

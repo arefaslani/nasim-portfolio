@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { renderTimeline, setActiveMarker } from "../../src/components/Timeline";
+import {
+  centeredScrollLeft,
+  centerNewest,
+  enableWheelNavigation,
+  renderTimeline,
+  setActiveMarker,
+} from "../../src/components/Timeline";
 import { formatDate, isIsoDate } from "../../src/utils/dates";
 import type { ProjectManifest } from "../../src/data/types";
 
@@ -102,5 +108,135 @@ describe("date formatting", () => {
     expect(formatDate("2026-02-30")).toBe("2026-02-30"); // impossible date
     expect(isIsoDate("2026-12-03")).toBe(true);
     expect(isIsoDate("2026-02-30")).toBe(false);
+  });
+});
+
+describe("enableWheelNavigation (TASK-020)", () => {
+  /** jsdom has no layout: fake the scroll geometry on the container. */
+  function scrollableContainer(): HTMLElement {
+    const container = doc.getElementById("timeline")!;
+    Object.defineProperty(container, "clientWidth", { value: 500, configurable: true });
+    Object.defineProperty(container, "scrollWidth", { value: 2000, configurable: true });
+    container.scrollLeft = 100;
+    return container;
+  }
+
+  it("translates vertical wheel movement into horizontal scrolling", () => {
+    const container = scrollableContainer();
+    const cleanup = enableWheelNavigation(container);
+    const event = new WheelEvent("wheel", { deltaY: 120, cancelable: true });
+    container.dispatchEvent(event);
+    expect(container.scrollLeft).toBe(220);
+    expect(event.defaultPrevented).toBe(true);
+    cleanup();
+  });
+
+  it("scrolls up-wheel toward the start and down-wheel toward the end", () => {
+    const container = scrollableContainer();
+    const cleanup = enableWheelNavigation(container);
+    container.dispatchEvent(new WheelEvent("wheel", { deltaY: -80, cancelable: true }));
+    expect(container.scrollLeft).toBe(20);
+    cleanup();
+  });
+
+  it("leaves native horizontal gestures alone", () => {
+    const container = scrollableContainer();
+    const cleanup = enableWheelNavigation(container);
+    const event = new WheelEvent("wheel", { deltaX: 100, deltaY: 10, cancelable: true });
+    container.dispatchEvent(event);
+    expect(container.scrollLeft).toBe(100); // unchanged
+    expect(event.defaultPrevented).toBe(false);
+    cleanup();
+  });
+
+  it("hands the gesture back to page scrolling at the timeline edges", () => {
+    const container = scrollableContainer();
+    const cleanup = enableWheelNavigation(container);
+
+    // At the start: up-wheel must not be consumed.
+    container.scrollLeft = 0;
+    const up = new WheelEvent("wheel", { deltaY: -100, cancelable: true });
+    container.dispatchEvent(up);
+    expect(up.defaultPrevented).toBe(false);
+    expect(container.scrollLeft).toBe(0);
+
+    // At the end: down-wheel must not be consumed.
+    container.scrollLeft = 1500; // 1500 + 500 = 2000 = scrollWidth
+    const down = new WheelEvent("wheel", { deltaY: 100, cancelable: true });
+    container.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(false);
+    expect(container.scrollLeft).toBe(1500);
+    cleanup();
+  });
+
+  it("cleanup removes the listener (Section 8.3)", () => {
+    const container = scrollableContainer();
+    const cleanup = enableWheelNavigation(container);
+    cleanup();
+    container.dispatchEvent(new WheelEvent("wheel", { deltaY: 100, cancelable: true }));
+    expect(container.scrollLeft).toBe(100);
+  });
+});
+
+describe("centerNewest (TASK-019)", () => {
+  /** Give an element fake geometry the way a real browser would. */
+  function withGeometry(element: Element, geometry: { offsetLeft: number; offsetWidth: number; clientWidth?: number }): void {
+    const target = element as HTMLElement;
+    Object.defineProperty(target, "offsetLeft", { value: geometry.offsetLeft, configurable: true });
+    Object.defineProperty(target, "offsetWidth", { value: geometry.offsetWidth, configurable: true });
+    if (geometry.clientWidth !== undefined) {
+      Object.defineProperty(target, "clientWidth", { value: geometry.clientWidth, configurable: true });
+    }
+  }
+
+  it("computes the centered scroll position", () => {
+    // Item at x=900, 96 wide; container 400 wide → center: 900 - (400-96)/2 = 748.
+    const container = { clientWidth: 400 } as HTMLElement;
+    const item = { offsetLeft: 900, offsetWidth: 96 } as HTMLElement;
+    expect(centeredScrollLeft(container, item)).toBe(748);
+  });
+
+  it("never scrolls left of the timeline start", () => {
+    const container = { clientWidth: 800 } as HTMLElement;
+    const item = { offsetLeft: 100, offsetWidth: 96 } as HTMLElement;
+    expect(centeredScrollLeft(container, item)).toBe(0);
+  });
+
+  it("centers the newest (first) marker on desktop", () => {
+    renderTimeline(doc, makeManifest(["2026-12-03", "2026-11-20"]), () => {});
+    const container = doc.getElementById("timeline")!;
+    withGeometry(container, { offsetLeft: 0, offsetWidth: 1000, clientWidth: 500 });
+    withGeometry(doc.querySelector(".timeline__item")!, {
+      offsetLeft: 48,
+      offsetWidth: 96,
+    });
+    centerNewest(doc, { isDesktop: () => true });
+    expect(container.scrollLeft).toBe(0); // 48 - (500-96)/2 < 0 → clamped
+  });
+
+  it("does nothing on mobile", () => {
+    renderTimeline(doc, makeManifest(["2026-12-03"]), () => {});
+    const container = doc.getElementById("timeline")!;
+    withGeometry(container, { offsetLeft: 0, offsetWidth: 1000, clientWidth: 500 });
+    withGeometry(doc.querySelector(".timeline__item")!, { offsetLeft: 300, offsetWidth: 96 });
+    centerNewest(doc, { isDesktop: () => false });
+    expect(container.scrollLeft).toBe(0);
+  });
+
+  it("handles an empty timeline without scrolling", () => {
+    renderTimeline(doc, { schemaVersion: 1, projects: [] }, () => {});
+    const container = doc.getElementById("timeline")!;
+    withGeometry(container, { offsetLeft: 0, offsetWidth: 1000, clientWidth: 500 });
+    expect(() => centerNewest(doc, { isDesktop: () => true })).not.toThrow();
+    expect(container.scrollLeft).toBe(0);
+  });
+
+  it("computes a positive offset for a marker beyond the viewport center", () => {
+    renderTimeline(doc, makeManifest(["2026-12-03"]), () => {});
+    const container = doc.getElementById("timeline")!;
+    withGeometry(container, { offsetLeft: 0, offsetWidth: 2000, clientWidth: 500 });
+    withGeometry(doc.querySelector(".timeline__item")!, { offsetLeft: 900, offsetWidth: 96 });
+    centerNewest(doc, { isDesktop: () => true });
+    expect(container.scrollLeft).toBe(698); // 900 - (500-96)/2
   });
 });
