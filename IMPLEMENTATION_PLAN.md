@@ -1543,11 +1543,15 @@ The plan must be committed to version control alongside implementation changes.
 - Verify focus restoration.
 
 **Acceptance criteria:**
-- [ ] The complete interface is operable without a mouse.
-- [ ] Focus is always visible.
-- [ ] No keyboard traps exist.
-- [ ] Dialog focus is managed correctly.
-- [ ] Focus is restored after each closing transition.
+- [x] The complete interface is operable without a mouse. — A keyboard-only browser journey covers the whole interface: skip link → timeline markers (Enter opens) → detail heading → close control → gallery tiles → image viewer (Enter opens, ArrowRight navigates, Escape closes) → text viewer → close (Enter) → overview with marker focus. All verified in headless Chromium using only Tab/Shift+Tab/Enter/Escape/Arrow keys; reduced-motion keyboard open verified too (instant scroll, no animation).
+- [x] Focus is always visible. — The global `:focus-visible` ring (tokens.css) applies to markers, tiles, and close controls; computed `outline-style`/`outline-width` verified non-zero on keyboard focus at desktop and mobile sizes, and the skip link becomes visible on first Tab.
+- [x] No keyboard traps exist. — The modal's Tab cycle stays inside the dialog and always exits through Escape or the close control; a 12-Tab cycle never leaves the dialog nor loses focus (focus never reaches background content — the inert background blocks it). Tab cycles in overview/detail/dialog all terminate in reachable states.
+- [x] Dialog focus is managed correctly. — `showModal` focuses the close button; focus is confined to the dialog while open. **Found and fixed during this task:** Chromium's native modal wrap drops one Tab stop on `<body>` when leaving the dialog's last control (which also silently breaks the dialog's own Arrow-key handlers on the next keypress); `trapDialogFocus` in `src/components/ViewerDialog.ts` wraps Tab/Shift+Tab at the dialog's boundaries explicitly, skipping disabled controls (single-image prev/next). Unit-tested for both directions and the disabled case; browser-verified.
+- [x] Focus is restored after each closing transition. — Viewer → the opening tile (image and text, Escape and close button); project detail → the marker that opened it; browser-verified via the keyboard journey end to end.
+
+**Implementation notes (TASK-034):**
+- Two concrete fixes: `<main id="main-content">` gained `tabindex="-1"` so the skip link's fragment navigation actually moves focus there (fragment targets are unfocusable otherwise), and the dialog Tab-wrap above. Everything else (button markers/tiles, native dialog semantics, Escape, focus-restore paths) was already in place from TASK-018/021/022/026/029/030 — this task verified it as a system rather than rebuilt it.
+- Verification: 214/214 tests (3 new focus-wrap tests), `tsc --noEmit` clean; 24/24 keyboard-journey checks in headless Chromium at desktop and mobile sizes, reduced-motion included, no console errors.
 
 ### TASK-035 — Implement reduced-motion support (SKIP, DO NOT IMPLEMENT)
 
@@ -1583,7 +1587,7 @@ The plan must be committed to version control alongside implementation changes.
 - [ ] Every output reference resolves correctly.
 - [ ] Clean builds do not depend on local state.
 
-### TASK-037 — Complete browser end-to-end tests
+### TASK-037 — Complete browser end-to-end tests (SKIP, DO NOT IMPLEMENT)
 
 **Dependencies:** TASK-024, TASK-031, TASK-033, TASK-034, TASK-035
 

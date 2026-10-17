@@ -38,6 +38,8 @@ export function bindViewerDismissal(
   dialog
     .querySelector(".viewer__close")
     ?.addEventListener("click", () => state.closeOverlay());
+
+  trapDialogFocus(dialog);
 }
 
 /**
@@ -46,4 +48,32 @@ export function bindViewerDismissal(
  */
 export function dismissViewer(dialog: HTMLDialogElement): void {
   if (dialog.open) dialog.close();
+}
+
+/**
+ * Wrap Tab at the dialog's focus boundaries (Section 7: no keyboard
+ * traps, dialog focus managed correctly). Chromium's native modal wrap
+ * can drop one Tab stop on <body> before re-entering the dialog; an
+ * explicit wrap keeps the cycle inside the dialog at both edges.
+ * Disabled controls (e.g. single-image prev/next) are skipped.
+ */
+export function trapDialogFocus(dialog: HTMLDialogElement): void {
+  dialog.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab") return;
+    const focusables = [
+      ...dialog.querySelectorAll<HTMLElement>("button:not(:disabled)"),
+    ];
+    if (focusables.length === 0) return;
+    const first = focusables[0]!;
+    const last = focusables[focusables.length - 1]!;
+    const active = dialog.ownerDocument.activeElement;
+
+    if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
 }

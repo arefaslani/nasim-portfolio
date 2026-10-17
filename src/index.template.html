@@ -40,7 +40,9 @@
 
   <!-- Project detail: header, mosaic, close control. Populated when a
        project is active (TASK-024+). -->
-  <main id="main-content" data-state-region="main">
+  <!-- tabindex="-1" lets the skip link's fragment navigation move focus
+       here (Section 7: logical focus destinations). -->
+  <main id="main-content" tabindex="-1" data-state-region="main">
     <section id="project-detail" hidden aria-labelledby="project-date">
       <div class="project-detail__header">
         <h2 id="project-date" tabindex="-1"></h2>

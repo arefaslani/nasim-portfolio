@@ -256,3 +256,49 @@ describe("overlays and project detail share one state (TASK-031)", () => {
     expect(state.get()).toEqual({ mode: "project", projectId: "2026-12-03" });
   });
 });
+
+describe("dialog focus wrap (TASK-034)", () => {
+  it("wraps forward Tab at the last control back to the first", () => {
+    const { state } = setup();
+    state.openProject(projects[0]!.id);
+    openFirstImage(state);
+    const dialog = imageView();
+    const buttons = [...dialog.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
+    buttons[buttons.length - 1]!.focus();
+    dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
+    expect(doc.activeElement).toBe(buttons[0]);
+    expect(dialog.contains(doc.activeElement)).toBe(true);
+  });
+
+  it("wraps Shift+Tab at the first control back to the last", () => {
+    const { state } = setup();
+    state.openProject(projects[0]!.id);
+    openFirstImage(state);
+    const dialog = imageView();
+    const buttons = [...dialog.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
+    buttons[0]!.focus();
+    dialog.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true }),
+    );
+    expect(doc.activeElement).toBe(buttons[buttons.length - 1]);
+  });
+
+  it("skips disabled controls when wrapping (single-image viewer)", () => {
+    const single: Project = { ...projects[0]!, assets: [projects[0]!.assets[0]!] };
+    const state = createViewStateManager([single.id]);
+    const card = doc.getElementById("timeline-hover-card") as HTMLElement;
+    initProjectDetail(doc, state, [single], card);
+    initImageViewer(doc, state, [single]);
+    state.openProject(single.id);
+    const frame = doc.querySelector("#mosaic .mosaic__frame") as HTMLButtonElement;
+    frame.focus();
+    frame.click();
+    const dialog = imageView();
+    // prev/next are disabled: the only wrap targets are close and itself.
+    const enabled = [...dialog.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
+    expect(enabled).toHaveLength(1);
+    enabled[0]!.focus();
+    dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
+    expect(doc.activeElement).toBe(enabled[0]); // stays put, never escapes
+  });
+});
