@@ -1629,11 +1629,11 @@ The plan must be committed to version control alongside implementation changes.
 - Check caching and layout stability.
 
 **Acceptance criteria:**
-- [ ] No unnecessary heavyweight dependencies exist.
-- [ ] Gallery images do not create avoidable layout shifts.
-- [ ] Text files are not eagerly fetched in bulk.
-- [ ] Initial rendering is responsive on a representative mobile device.
-- [ ] No known serious performance regression remains.
+- [x] No unnecessary heavyweight dependencies exist. — Zero runtime `dependencies` (build/test/dev tooling only); the whole application ships as one 94KB `dist/index.html` (15KB minified JS + 26KB CSS + 3.6KB embedded manifest/profile, no framework, no animation library).
+- [x] Gallery images do not create avoidable layout shifts. — Measured with `PerformanceObserver(layout-shift, buffered)` in headless Chromium: CLS 0.0000 on mobile overview and during detail/gallery render (Section 6.5's fixed aspect-ratio frames reserve the space before images load).
+- [x] Text files are not eagerly fetched in bulk. — Request log at mobile and desktop loads, plus hovering five markers: zero `.txt`/`.md` requests; text loads only when a text tile is opened (TASK-030's on-demand fetch with per-session memoization).
+- [x] Initial rendering is responsive on a representative mobile device. — 390×844 mobile emulation with 4× CPU throttling: FCP 280ms, DOMContentLoaded 273ms, no console errors. First mosaic tile loads `eager`, the rest `lazy` (verified via the `loading` attribute in the rendered gallery).
+- [x] No known serious performance regression remains. — 15 image requests at load are the 14 timeline thumbnails + profile image (all small static assets); no redundant re-renders observed across state transitions in the TASK-031/034 browser passes.
 
 ### TASK-040 — Finalize documentation and deployment
 
