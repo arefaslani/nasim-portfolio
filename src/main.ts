@@ -1,5 +1,5 @@
 import { renderIntro } from "./components/Intro.ts";
-import { renderTimeline } from "./components/Timeline.ts";
+import { centerNewest, renderTimeline } from "./components/Timeline.ts";
 import { loadAppData } from "./services/project-data.ts";
 
 /**
@@ -17,4 +17,7 @@ if (appData === null) {
   renderTimeline(document, appData.manifest, (projectId) => {
     console.info(`nasim-portfolio: project selected: ${projectId}`);
   });
+  // Initial centering happens once, synchronously, before first paint.
+  // The app never auto-centers again afterward (Section 6.1).
+  centerNewest(document);
 }

@@ -10,6 +10,8 @@ import { formatDate } from "../utils/dates.ts";
  * empty state (Section 6.1) takes over instead.
  */
 
+/** Marker width comes from CSS; keep them in sync via the same var. */
+
 export function renderTimeline(
   doc: Document,
   manifest: ProjectManifest,
@@ -85,4 +87,42 @@ export function setActiveMarker(doc: Document, projectId: string | null): void {
     (element) => (element as HTMLElement).dataset.projectId === projectId,
   );
   item?.setAttribute("data-active", "true");
+}
+
+/**
+ * Compute the scroll position that centers `item` in `container`
+ * (TASK-019). Never negative: when the content is narrower than the
+ * container, the timeline stays at its left edge.
+ */
+export function centeredScrollLeft(container: HTMLElement, item: HTMLElement): number {
+  const target =
+    item.offsetLeft - (container.clientWidth - item.offsetWidth) / 2;
+  return Math.max(0, target);
+}
+
+/**
+ * Center the newest project (the first marker) horizontally on initial
+ * load (Section 6.1). Runs synchronously after render so the position is
+ * set before first paint — no visible jump. Desktop only; the mobile
+ * timeline is vertical (TASK-032). No-ops on an empty timeline.
+ */
+export function centerNewest(
+  doc: Document,
+  options: { isDesktop?: () => boolean } = {},
+): void {
+  const isDesktop = options.isDesktop ?? defaultIsDesktop;
+  if (!isDesktop()) return;
+
+  const container = doc.getElementById("timeline");
+  if (container === null) return;
+  const newest = container.querySelector<HTMLElement>(".timeline__item");
+  if (newest === null) return;
+
+  // Marker dimensions are fixed in CSS (not image-dependent), so layout
+  // measurements are already final here.
+  container.scrollLeft = centeredScrollLeft(container, newest);
+}
+
+function defaultIsDesktop(): boolean {
+  return window.matchMedia("(min-width: 1024px)").matches;
 }

@@ -1197,10 +1197,10 @@ The plan must be committed to version control alongside implementation changes.
 - Avoid repeated auto-centering after the user begins navigating.
 
 **Acceptance criteria:**
-- [ ] The newest project is centered on initial desktop load.
-- [ ] The behavior works with varying marker counts.
-- [ ] No invalid scrolling occurs when the timeline is empty.
-- [ ] User-initiated scrolling is not repeatedly overridden.
+- [x] The newest project is centered on initial desktop load. — `centerNewest` runs synchronously after render (inline script, before first paint): first marker centered via `centeredScrollLeft`, clamped at 0.
+- [x] The behavior works with varying marker counts. — Pure computation unit-tested with narrow and wide content; marker dimensions are CSS-fixed so measurements don't depend on image loading.
+- [x] No invalid scrolling occurs when the timeline is empty. — Empty timeline returns before touching `scrollLeft` (unit-tested).
+- [x] User-initiated scrolling is not repeatedly overridden. — Auto-centering happens exactly once at init and is never scheduled again (no resize/recenter logic).
 
 ### TASK-020 — Implement horizontal wheel and trackpad navigation
 
