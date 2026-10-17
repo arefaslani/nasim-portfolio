@@ -1,7 +1,8 @@
 /*
  * Timeline (TASK-018): horizontal on desktop, markers sitting on a
- * continuous line. Vertical orientation is TASK-032. The container
- * scrolls horizontally; the page itself never does.
+ * continuous line. Mobile switches the orientation to vertical
+ * (TASK-032, Section 6.9) via the media query at the end of this file.
+ * The desktop container scrolls horizontally; the page itself never does.
  */
 
 #timeline-region {
@@ -117,4 +118,70 @@
   border-radius: 50%;
   border: var(--border-width) dashed var(--color-border-strong);
   background: var(--color-surface);
+}
+
+/* --- Mobile: vertical timeline (TASK-032, Section 6.9) ---
+   At the mobile breakpoint (≤639px, the canonical breakpoint in
+   tokens.css) the timeline stops scrolling horizontally and flows in
+   the document as a vertical list: markers on a continuous vertical
+   line, newest first (DOM order), each date beside its thumbnail.
+   Desktop and tablet keep the horizontal composition above unchanged.
+   These rules live here rather than in a separate responsive.css
+   because the build concatenates stylesheets alphabetically — a
+   responsive.css would sort before timeline.css and lose the cascade. */
+@media (max-width: 639.98px) {
+  #timeline-region {
+    padding-block: var(--space-6) var(--space-8);
+  }
+
+  /* No horizontal scroller on mobile: the list is document content.
+     Drag/wheel handlers simply never fire — nothing overflows. */
+  .timeline-scroller {
+    overflow: visible;
+    cursor: default;
+  }
+
+  .timeline {
+    --timeline-marker-size: 4.5rem; /* 72px — still a generous touch target */
+
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-6);
+    width: 100%;
+    padding: var(--space-2) var(--page-gutter);
+  }
+
+  /* The continuous line becomes vertical, through the thumbnails'
+     centers (their left edge sits at the list's content start), trimmed
+     to run between the first and last marker centers. */
+  .timeline::before {
+    left: calc(var(--page-gutter) + var(--timeline-marker-size) / 2);
+    right: auto;
+    top: calc(var(--space-2) + var(--timeline-marker-size) / 2);
+    bottom: calc(var(--space-2) + var(--timeline-marker-size) / 2);
+    width: var(--border-width);
+    height: auto;
+  }
+
+  .timeline__item {
+    width: auto;
+  }
+
+  /* Date beside the thumbnail rather than beneath it: legible at
+     mobile width, with the marker row as the touch target. */
+  .timeline__marker {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-4);
+    padding-top: 0;
+  }
+
+  .timeline__date {
+    white-space: nowrap;
+  }
+
+  /* Row layout puts the thumbnail at the item's top edge. */
+  .timeline__item--image-failed::before {
+    top: 0;
+  }
 }

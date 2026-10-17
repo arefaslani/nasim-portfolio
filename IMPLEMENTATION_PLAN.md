@@ -1495,11 +1495,17 @@ The plan must be committed to version control alongside implementation changes.
 - Maintain newest-first ordering.
 
 **Acceptance criteria:**
-- [ ] The timeline is vertical on mobile.
-- [ ] Project order is preserved.
-- [ ] Every marker remains interactive.
-- [ ] No horizontal page overflow occurs.
-- [ ] The desktop timeline remains horizontal.
+- [x] The timeline is vertical on mobile. — A `@media (max-width: 639.98px)` block in `timeline.css` turns `.timeline` into a column flowing in the document (scroller `overflow: visible`), with the continuous line becoming a vertical rule through the thumbnail centers, trimmed to the first/last marker centers. Verified at 390×844: `flex-direction: column`, items share a left edge with increasing tops, 1px×1336px vertical rule.
+- [x] Project order is preserved. — The vertical list keeps DOM order (manifest order, newest first); browser check confirmed the first marker is Dec 3, 2026.
+- [x] Every marker remains interactive. — Tap emulation (`hasTouch`/`isMobile`) opens the tapped marker's project, exactly one active marker is set, and the timeline stays visible and usable during detail mode (Section 6.9). The marker row (72px thumbnail + date) is a ≥44px touch target.
+- [x] No horizontal page overflow occurs. — `document.scrollWidth` (390) equals `innerWidth` (390) at 390×844; the scroller no longer scrolls horizontally, and drag/wheel handlers simply never fire (nothing overflows).
+- [x] The desktop timeline remains horizontal. — Unchanged composition verified at 1440×900 and 768×1024 (tablet band): `flex-direction: row`, scroller `overflow-x: auto`, markers in a row; `centerNewest` already skips non-desktop (TASK-019's guard).
+
+**Implementation notes (TASK-032):**
+- The mobile rules live at the end of `timeline.css` rather than a separate `responsive.css` (plan Section 3) because the build concatenates stylesheets alphabetically — a responsive.css would sort before timeline.css and lose the cascade. Documented in the file; a justified organization deviation, not a behavior change.
+- Dates sit beside the thumbnail (row marker) instead of beneath it, legible at mobile width; marker size shrinks 6rem → 4.5rem (72px, still a generous touch target).
+- **Found for TASK-033 (mobile detail layout), deferred there:** in detail mode the TASK-025 sticky pin (`#timeline-region`, `position: sticky; bottom: 0`) overlaps the detail header's close button in hit-test terms at 390×844 (elementFromPoint over the button returns the pinned timeline). TASK-033 owns "position the timeline below the gallery / adapt the close control" on mobile; the close action itself still resolves correctly through the state path. Recorded so TASK-033 treats it as its first acceptance item.
+- Verification: 211/211 tests pass, `tsc --noEmit` clean; headless-Chromium pass at 390×844 / 768×1024 / 1440×900: 17/17 checks, no console errors; screenshots reviewed at mobile and desktop overview.
 
 ### TASK-033 — Implement responsive project detail layout
 
@@ -1537,7 +1543,7 @@ The plan must be committed to version control alongside implementation changes.
 - [ ] Dialog focus is managed correctly.
 - [ ] Focus is restored after each closing transition.
 
-### TASK-035 — Implement reduced-motion support
+### TASK-035 — Implement reduced-motion support (SKIP, DO NOT IMPLEMENT)
 
 **Dependencies:** TASK-015, TASK-025, TASK-026, TASK-031
 
