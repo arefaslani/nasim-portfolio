@@ -1039,10 +1039,10 @@ The plan must be committed to version control alongside implementation changes.
 - Ensure the generated HTML supports the configured base path.
 
 **Acceptance criteria:**
-- [ ] The template is valid HTML.
-- [ ] All required application regions exist.
-- [ ] The template does not contain hardcoded project data.
-- [ ] The template does not assume deployment at `/`.
+- [x] The template is valid HTML. — Complete document with doctype, lang, charset, viewport, title; tag-balance checked by contract tests.
+- [x] All required application regions exist. — Intro (photo, name, headline, text), timeline nav, project detail (date header, close button, mosaic), empty state, image/text viewer dialogs, and a non-executable `#app-data` JSON slot for the manifest.
+- [x] The template does not contain hardcoded project data. — All content is injected by the application from the embedded manifest/profile; contract test asserts no project paths or image references in the template.
+- [x] The template does not assume deployment at `/`. — `<base href="{{BASE_PATH}}/">` is injected at build time; documented build-token list in the template header.
 
 ### TASK-012 — Implement the build pipeline
 
