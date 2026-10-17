@@ -960,12 +960,12 @@ The plan must be committed to version control alongside implementation changes.
 - Sort assets deterministically.
 
 **Acceptance criteria:**
-- [ ] Folders without `0.txt` are excluded with a warning.
-- [ ] Eligible projects have a valid featured image.
-- [ ] Project descriptions are trimmed.
-- [ ] Gallery assets exclude metadata files.
-- [ ] The discovery process is deterministic.
-- [ ] Automated tests cover all required cases.
+- [x] Folders without `0.txt` are excluded with a warning. — Verified live: `2025-05-01` (featured image only) is skipped with a warning; eligible projects still build.
+- [x] Eligible projects have a valid featured image. — Exactly one basename-`0` image required; 0 candidates and 2+ candidates both produce errors.
+- [x] Project descriptions are trimmed. — `0.txt` contents are trimmed; empty/whitespace-only descriptions are validation errors.
+- [x] Gallery assets exclude metadata files. — `0.txt`, the featured image, hidden files, and system files are excluded; unsupported files are reported as warnings.
+- [x] The discovery process is deterministic. — Folder, file, and asset ordering use fixed code-point sorts; projects sort newest first.
+- [x] Automated tests cover all required cases. — 12 new unit tests use an in-memory filesystem (no real fixtures needed); all 33 tests pass, `tsc --noEmit` clean. Verified live against real project folders, including the invalid-date and missing-`0.txt` diagnostics.
 
 ### TASK-008 — Generate the project manifest
 

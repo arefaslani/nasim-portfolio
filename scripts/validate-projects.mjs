@@ -1,50 +1,42 @@
-// Project-content validation CLI (TASK-006 scope: folder-name and
-// file-name rules). Deeper project discovery arrives in TASK-007.
+// Project-content validation CLI: discovers and validates everything under
+// projects/ (TASK-006: folder/file name rules; TASK-007: full discovery).
 // Exit code 1 on any validation error, 0 otherwise.
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isValidProjectDirName } from "../src/lib/validate.ts";
+import { discoverProjects } from "../src/lib/discover.ts";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const projectsDir = join(repoRoot, "projects");
 
-const errors = [];
-const warnings = [];
+const reader = {
+  list: (dir) =>
+    readdirSync(dir, { withFileTypes: true }).map((entry) => ({
+      name: entry.name,
+      isDirectory: entry.isDirectory(),
+    })),
+  readTextFile: (path) => readFileSync(path, "utf8"),
+};
 
-let entries;
-try {
-  entries = readdirSync(projectsDir, { withFileTypes: true });
-} catch (error) {
-  if (error.code === "ENOENT") {
-    console.log("validate: no projects/ directory yet — nothing to validate.");
-    process.exit(0);
-  }
-  throw error;
-}
+const { projects, errors, warnings } = discoverProjects(reader, projectsDir);
 
-for (const entry of entries) {
-  if (!entry.isDirectory()) {
-    warnings.push(`Unexpected non-directory entry in projects/: ${entry.name}`);
-    continue;
-  }
-  if (!isValidProjectDirName(entry.name)) {
-    errors.push(
-      `Invalid project folder name "${entry.name}" — expected a real calendar date as YYYY-MM-DD.`,
-    );
-  }
-}
-
-for (const warning of warnings) {
-  console.warn(`warning: ${warning}`);
+for (const { message } of warnings) {
+  console.warn(`warning: ${message}`);
 }
 
 if (errors.length > 0) {
-  for (const error of errors) {
-    console.error(`error: ${error}`);
+  for (const { message } of errors) {
+    console.error(`error: ${message}`);
   }
   console.error(`validate: ${errors.length} error(s) found.`);
   process.exit(1);
 }
 
-console.log("validate: project folder names are valid.");
+if (projects.length === 0) {
+  console.log("validate: no eligible projects found.");
+} else {
+  console.log(`validate: ${projects.length} project(s) discovered, all valid.`);
+  for (const project of projects) {
+    console.log(`  ${project.id} — "${project.description}" (${project.assets.length} gallery assets)`);
+  }
+}
