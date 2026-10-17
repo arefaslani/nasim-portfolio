@@ -8,7 +8,6 @@
     "validate": "node scripts/validate-projects.mjs",
     "build": "node scripts/build.mjs",
     "test": "vitest run",
-    "dev": "vite --host 127.0.0.1",
     "check": "npm run validate && npm run test && npm run build"
   },
   "devDependencies": {

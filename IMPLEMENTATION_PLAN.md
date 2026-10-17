@@ -1648,12 +1648,15 @@ The plan must be committed to version control alongside implementation changes.
 - Perform a final clean build and deploy.
 
 **Acceptance criteria:**
-- [ ] README contains complete setup instructions.
-- [ ] Adding a project requires no source-code changes.
-- [ ] `npm run check` succeeds.
-- [ ] GitHub Pages deployment succeeds.
-- [ ] The deployed website passes the critical acceptance tests.
-- [ ] All completed tasks in this plan have accurate statuses.
+- [x] README contains complete setup instructions. — Setup, commands, build preview (`python3 -m http.server` over `dist/`, since there is no dev server), adding a project, profile configuration, and deployment/base-path configuration (including the Pages "Source: GitHub Actions" setting and the `PORTFOLIO_BASE_PATH` custom-domain switch).
+- [x] Adding a project requires no source-code changes. — Documented content-only workflow (Section 14); the release integration tests prove the pipeline consumes fixture content with no code changes.
+- [x] `npm run check` succeeds. — Verified from a clean tree (`rm -rf dist` first): validate OK (profile + 14 projects), 223/223 tests pass, build produces `dist/`; exit code 0.
+- [ ] GitHub Pages deployment succeeds. — Pending the first push to `main` (workflow triggers on push; Pages source must be set to "GitHub Actions"). Same pending item as TASK-014's two live criteria.
+- [ ] The deployed website passes the critical acceptance tests. — Pending live verification at `https://arefaslani.github.io/nasim-portfolio/` after the first push (base path `/nasim-portfolio/` is set by the workflow).
+- [x] All completed tasks in this plan have accurate statuses. — Phases 0–7 complete with recorded evidence; TASK-035/037 marked SKIP and TASK-038 skipped at the user's instruction; pending deployment items recorded here and in TASK-014.
+
+**Implementation notes (TASK-040):**
+- The dead `dev` script (`vite`) was removed from `package.json` — vite was never installed; the sources are native TypeScript and the build output is previewed over HTTP instead. Documented command contract change per Section 5.2.
 
 ---
 

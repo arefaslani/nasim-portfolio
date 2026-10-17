@@ -21,6 +21,19 @@ Requires Node 24 (any recent Node with native TypeScript support works).
 | `npm run build` | Builds the site into `dist/` |
 | `npm run check` | All of the above — what CI runs before deploying |
 
+(There is no dev server: sources are native TypeScript, and the site is
+previewed from the build output as shown below.)
+
+## Previewing a build
+
+`dist/index.html` needs HTTP for `<base>`/`fetch` (not `file://`):
+
+```bash
+npm run build
+python3 -m http.server 8123 -d dist
+# open http://127.0.0.1:8123
+```
+
 ## Adding a project
 
 1. Create a folder `projects/YYYY-MM-DD/` named with the project's date.
