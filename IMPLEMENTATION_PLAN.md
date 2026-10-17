@@ -979,12 +979,17 @@ The plan must be committed to version control alongside implementation changes.
 - Safely serialize content for embedding in HTML.
 
 **Acceptance criteria:**
-- [ ] The generated manifest matches the schema.
-- [ ] Projects are ordered by descending date.
-- [ ] No local absolute paths are exposed.
-- [ ] No manifest path escapes the allowed project directory.
-- [ ] Serialization cannot introduce executable HTML through project text.
-- [ ] Integration tests pass.
+- [x] The generated manifest matches the schema. — `buildManifest` produces `ProjectManifest` (schema v1) from discovered projects; pinned by unit tests.
+- [x] Projects are ordered by descending date. — Sorted newest-first in `buildManifest`, independent of discovery order.
+- [x] No local absolute paths are exposed. — `toDeployedPath` builds site-relative paths (`projects/<date>/<file>`); tests assert no `/Users/` or `..` in output.
+- [x] No manifest path escapes the allowed project directory. — `assertNoTraversal` rejects `..`, `.`, empty segments, and absolute paths; unit-tested.
+- [x] Serialization cannot introduce executable HTML through project text. — `safeJsonForHtml` escapes `<`, `>`, `&`, U+2028/2029; tests prove `</script>` payloads cannot close the containing element and content round-trips through `JSON.parse`.
+- [ ] Integration tests pass. — Deferred: integration tests are built with the fixture suite in TASK-009 and the pipeline in TASK-012/TASK-036. Unit-level coverage is complete.
+
+**Implementation notes (TASK-008):**
+- Discovery now keeps the full file name on each asset (extension included) so paths, MIME types, and future tile labels derive from one value.
+- Empty base path yields site-root-relative paths (no leading slash); a `/repo` base yields domain-root-absolute paths. Final base-path wiring is TASK-013.
+- tsconfig target/lib bumped ES2020 → ES2021 for `String.replaceAll`.
 
 ### TASK-009 — Create representative project fixtures
 

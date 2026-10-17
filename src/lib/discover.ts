@@ -123,7 +123,9 @@ export function discoverProject(
 /**
  * Classify the non-featured gallery files of a project folder.
  * Images and text files become tiles; everything else is reported as
- * unsupported. Paths are left empty here; TASK-008 fills them in.
+ * unsupported. `name` keeps the full file name (extension included) so
+ * paths, MIME types, and tile labels can be derived downstream; `path`
+ * is left empty here and filled in during manifest generation.
  */
 export function classifyGalleryAssets(
   fileNames: string[],
@@ -142,14 +144,14 @@ export function classifyGalleryAssets(
     if (ext !== null && isSupportedImageFile(name)) {
       assets.push({
         type: "image",
-        name: name.slice(0, name.length - ext.length - 1),
+        name,
         path: "",
         mimeType: `image/${ext === "jpg" ? "jpeg" : ext}`,
       });
     } else if (ext !== null && isSupportedTextFile(name)) {
       assets.push({
         type: "text",
-        name: name.slice(0, name.length - ext.length - 1),
+        name,
         path: "",
         mimeType: TEXT_MIME_TYPES[ext] ?? "text/plain",
       });

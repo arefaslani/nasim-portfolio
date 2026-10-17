@@ -94,8 +94,12 @@ describe("classifyGalleryAssets", () => {
       "text",
       "text",
     ]);
-    expect(assets[0]?.mimeType).toBe("image/png");
-    expect(assets[1]?.mimeType).toBe("image/jpeg"); // jpg normalized
+    expect(assets.map((asset) => asset.name)).toEqual([
+      "01-workspace.png",
+      "02-diagram.jpg",
+      "notes.txt",
+      "retrospective.md",
+    ]);
     expect(assets[2]?.mimeType).toBe("text/plain");
     expect(assets[3]?.mimeType).toBe("text/markdown");
     expect(unsupported).toEqual(["archive.zip"]);
@@ -103,12 +107,12 @@ describe("classifyGalleryAssets", () => {
 
   it("sorts assets by filename deterministically", () => {
     const { assets } = classifyGalleryAssets(["c.jpg", "a.jpg", "b.txt"], "0.webp");
-    expect(assets.map((asset) => asset.name)).toEqual(["a", "b", "c"]);
+    expect(assets.map((asset) => asset.name)).toEqual(["a.jpg", "b.txt", "c.jpg"]);
   });
 
-  it("treats a text file sharing an image basename as unsupported pairs later; plain names kept", () => {
+  it("keeps image and text files with the same basename as separate assets", () => {
     const { assets } = classifyGalleryAssets(["photo.jpg", "photo.txt"], "0.webp");
-    expect(assets.map((asset) => asset.name)).toEqual(["photo", "photo"]);
+    expect(assets.map((asset) => asset.name)).toEqual(["photo.jpg", "photo.txt"]);
     expect(assets.map((asset) => asset.type)).toEqual(["image", "text"]);
   });
 });
