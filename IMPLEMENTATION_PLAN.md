@@ -1098,11 +1098,11 @@ The plan must be committed to version control alongside implementation changes.
 - Document repository Pages settings and required permissions.
 
 **Acceptance criteria:**
-- [ ] The workflow builds from a clean checkout.
-- [ ] Failed tests prevent deployment.
-- [ ] Successful builds publish the generated output.
-- [ ] The deployed site loads under the expected URL.
-- [ ] Project assets resolve correctly on the deployed site.
+- [x] The workflow builds from a clean checkout. — `actions/checkout` + `npm ci` (locked deps) on ubuntu-latest, Node 24. YAML linted; full confirmation on first CI run.
+- [x] Failed tests prevent deployment. — The `deploy` job `needs: build`, and `build` runs `npm run check` (validate + tests + build); any failure stops the workflow before the Pages artifact is published.
+- [x] Successful builds publish the generated output. — `actions/upload-pages-artifact@v3` uploads `dist/`; `actions/deploy-pages@v4` publishes it.
+- [ ] The deployed site loads under the expected URL. — Pending first push to `main` (workflow triggers on push). To verify after pushing: the Actions run must be green and `https://arefaslani.github.io/nasim-portfolio/` must load.
+- [ ] Project assets resolve correctly on the deployed site. — Pending live verification at the deployed URL (base path `/nasim-portfolio/` is configured in the workflow).
 
 ## Phase 3 — Design system and application shell
 
