@@ -46,10 +46,17 @@
   max-width: 32rem;
 }
 
-/* Transition-ready hidden state (TASK-025 owns the choreography). */
+/*
+ * Detail state (TASK-025): the intro recedes toward the top — the
+ * document scrolls its box almost fully out of the viewport (navigation
+ * service), leaving only the bottom tenth peeking (Section 1), while
+ * the intro itself fades to a quiet ghost. Full disappearance is
+ * TASK-026's close-control counterpart: detail.css + this fade return
+ * together with the overview.
+ */
 #intro[data-hidden="true"] {
-  opacity: 0;
-  transform: translateY(-40%);
+  opacity: 0.35;
+  transform: translateY(calc(-1 * var(--space-3)));
   pointer-events: none;
 }
 

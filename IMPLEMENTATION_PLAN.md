@@ -1326,11 +1326,17 @@ The plan must be committed to version control alongside implementation changes.
 - Avoid abrupt layout shifts.
 
 **Acceptance criteria:**
-- [ ] The intro disappears from the visible composition.
-- [ ] The timeline remains visible during project detail.
-- [ ] The active date remains identifiable.
-- [ ] Animation and scrolling work together without visible jumps.
-- [ ] Reduced-motion mode provides an appropriate nonanimated transition.
+- [x] The intro disappears from the visible composition. — Opening a project scrolls the document to `detailScrollTarget` (bottom tenth of the intro left peeking, per Section 1) while the intro fades to a quiet ghost (`intro.css`: opacity 0.35, slight upward drift); verified in headless Chromium: intro bottom sits 18px below the viewport top with `data-hidden="true"`.
+- [x] The timeline remains visible during project detail. — `body[data-mode]:not(overview)` pins `#timeline-region` with `position: sticky; bottom: 0` (+ opaque background, z-index below the hover card); verified pinned at the viewport bottom while scrolling a detail page, and the timeline still switches projects during detail.
+- [x] The active date remains identifiable. — Active marker ring (TASK-018) plus the `#project-date` heading remain visible in the detail composition; browser-verified.
+- [x] Animation and scrolling work together without visible jumps. — The choreography lives in one `initTransitions` subscription (`src/services/navigation.ts`) reacting to `(next, previous)` diffs; the smooth scroll target matched the computed position within 2px in Chromium; scrolling only happens at the overview boundary (project↔project and viewer switches never re-scroll).
+- [x] Reduced-motion mode provides an appropriate nonanimated transition. — `matchMedia("(prefers-reduced-motion: reduce)")` switches the scroll to instant (`behavior: "auto"`); base.css's global guard zeroes the fade. Emulated-reduced-motion verified: same final position, transitionDuration 0.01ms.
+
+**Implementation notes (TASK-025):**
+- `<body data-mode>` mirrors the view state's mode (set in the template to `overview` so no-JS rendering is unaffected; detail selectors are `body:not([data-mode="overview"])`).
+- The document scroll and intro fade are complementary: the scroll does the hiding (the intro's box leaves the viewport), the fade is polish. `main` gets `min-height: 70vh` in detail mode so even a short (currently empty) mosaic leaves room to scroll the intro out; the mosaic content (TASK-027) will make real projects comfortably taller.
+- The overview-restore direction (scroll to top, intro returns) is already wired state-driven, so TASK-026 only needs to connect the close button to `state.closeProject()` — the `#close-project` button remains deliberately unwired.
+- Unit tests: `tests/unit/transitions.spec.ts` (target math incl. clamping, mode mirror, intro state, no-re-scroll on project switches, reduced-motion instant scroll, invalid-id safety). 163/163 tests pass, `tsc --noEmit` clean.
 
 ### TASK-026 — Implement project detail header and close control
 

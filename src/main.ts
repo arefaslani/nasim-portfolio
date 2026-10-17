@@ -8,6 +8,7 @@ import {
   renderTimeline,
 } from "./components/Timeline.ts";
 import { loadAppData } from "./services/project-data.ts";
+import { initTransitions } from "./services/navigation.ts";
 import { createViewStateManager } from "./services/view-state.ts";
 
 /**
@@ -30,6 +31,11 @@ if (appData === null) {
   // Project selection: markers open projects through the state model;
   // the subscription updates markers, the detail region, and overlays.
   initProjectDetail(document, state, appData.manifest.projects, hoverCard);
+
+  // Overview ↔ detail choreography (TASK-025): body data-mode, intro
+  // recede, and the coordinated document scroll, all from state diffs.
+  initTransitions(document, state);
+
   renderTimeline(document, appData.manifest, (projectId) => {
     state.openProject(projectId);
   });

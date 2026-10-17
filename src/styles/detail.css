@@ -1,0 +1,27 @@
+/*
+ * Detail-mode layout (TASK-025). <body data-mode> mirrors the view
+ * state (navigation.ts); anything other than "overview" is a detail
+ * composition: the intro recedes (intro.css + document scroll) and the
+ * timeline pins to the lower viewport region so it remains rendered,
+ * visible, and usable while detail content is open (Section 6.4).
+ * Mobile adaptations are TASK-033.
+ */
+
+/* Guarantee the document can scroll far enough that the intro exits
+   the viewport even while the mosaic is short (it grows with content
+   once TASK-027 renders it). */
+body:not([data-mode="overview"]) main {
+  flex: 1 0 auto;
+  min-height: 70vh;
+}
+
+/* The timeline stays present and readable for the entire detail state:
+   pinned to the lower viewport so tall galleries scroll beneath it.
+   Opaque background keeps scrolled content from showing through.
+   z-index sits below the hover card (10) and the skip link (100). */
+body:not([data-mode="overview"]) #timeline-region {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: var(--color-bg);
+}
