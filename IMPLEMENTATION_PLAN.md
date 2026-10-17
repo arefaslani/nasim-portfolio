@@ -1305,10 +1305,14 @@ The plan must be committed to version control alongside implementation changes.
 - Move focus to the project heading or detail region.
 
 **Acceptance criteria:**
-- [ ] Every eligible marker opens its project.
-- [ ] The correct project data is selected.
-- [ ] Focus moves to a meaningful destination.
-- [ ] Repeated activation does not duplicate the gallery.
+- [x] Every eligible marker opens its project. — Marker clicks call `state.openProject(id)` in `src/main.ts`; markers are buttons, so keyboard activation (Enter/Space) works natively. Verified in headless Chromium for click and Enter.
+- [x] The correct project data is selected. — The state model validates against the manifest's IDs; `initProjectDetail` (`src/components/ProjectDetail.ts`) looks the project up from the state and renders its folder date into `#project-date`. Browser check confirmed the active marker, heading, and state all agree when switching between projects.
+- [x] Focus moves to a meaningful destination. — Focus moves to the `#project-date` heading (`tabindex="-1"` added to the template) with `preventScroll: true` so focus never fights the TASK-025 scroll choreography; verified in the browser.
+- [x] Repeated activation does not duplicate the gallery. — The state model's equality check makes re-selecting the active project a no-op, and `showProjectDetail` clears the mosaic with `replaceChildren()` before rendering; unit- and browser-tested (single region, single active marker after repeated and switching activations).
+
+**Implementation notes (TASK-024):**
+- `#project-detail` currently opens beneath the intro without any choreography — the intro/timeline animation is TASK-025 and the close control TASK-026 (the `#close-project` button is deliberately still unwired).
+- The mosaic is cleared on every activation; its content rendering is TASK-027.
 
 ### TASK-025 — Animate the introduction out and timeline down
 

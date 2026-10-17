@@ -1,5 +1,6 @@
-import { renderIntro } from "./components/Intro.ts";
 import { createHoverCard, enableHoverCards } from "./components/HoverCard.ts";
+import { initProjectDetail } from "./components/ProjectDetail.ts";
+import { renderIntro } from "./components/Intro.ts";
 import {
   centerNewest,
   enableDragScrolling,
@@ -7,6 +8,7 @@ import {
   renderTimeline,
 } from "./components/Timeline.ts";
 import { loadAppData } from "./services/project-data.ts";
+import { createViewStateManager } from "./services/view-state.ts";
 
 /**
  * Application entry point. The build embeds app data (manifest +
@@ -18,11 +20,20 @@ if (appData === null) {
   console.warn("nasim-portfolio: no embedded app data found.");
 } else {
   renderIntro(document, appData.profile);
-  // Project selection arrives with the state model (TASK-023); for now
-  // selection is recorded so the timeline is exercisable.
+
+  // One explicit view state drives every region (Section 6.10).
+  const state = createViewStateManager(
+    appData.manifest.projects.map((project) => project.id),
+  );
+  const hoverCard = createHoverCard(document);
+
+  // Project selection: markers open projects through the state model;
+  // the subscription updates markers, the detail region, and overlays.
+  initProjectDetail(document, state, appData.manifest.projects, hoverCard);
   renderTimeline(document, appData.manifest, (projectId) => {
-    console.info(`nasim-portfolio: project selected: ${projectId}`);
+    state.openProject(projectId);
   });
+
   // Initial centering happens once, synchronously, before first paint.
   // The app never auto-centers again afterward (Section 6.1).
   centerNewest(document);
@@ -33,8 +44,7 @@ if (appData === null) {
     enableDragScrolling(scroller);
     // Custom hover cards (TASK-022): one shared card outside the
     // scroller so the overflow container can never clip it.
-    const card = createHoverCard(document);
-    enableHoverCards(scroller, card, (projectId) =>
+    enableHoverCards(scroller, hoverCard, (projectId) =>
       appData.manifest.projects.find((project) => project.id === projectId),
     );
   }
