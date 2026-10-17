@@ -1350,11 +1350,16 @@ The plan must be committed to version control alongside implementation changes.
 - Handle repeated clicks and interrupted transitions.
 
 **Acceptance criteria:**
-- [ ] The active date is visible.
-- [ ] The close button is keyboard accessible.
-- [ ] Closing restores the intro.
-- [ ] The timeline returns to the overview position.
-- [ ] Focus returns to the opening marker when appropriate.
+- [x] The active date is visible. — `#project-date` renders the folder date in the detail header (styled in `detail.css`: date left, close right); browser-verified visible at 1440×900.
+- [x] The close button is keyboard accessible. — The template's `#close-project` (already `aria-label`ed) is now styled as a 44px circular icon control and wired to `state.closeProject()`; Tab from the date heading reaches it and Enter closes — verified in headless Chromium.
+- [x] Closing restores the intro. — Close routes through the state model, so the TASK-025 choreography restores `data-mode="overview"`, the intro (opacity 1, `data-hidden="false"`), and the scroll-to-top; browser-verified.
+- [x] The timeline returns to the overview position. — The detail-mode CSS is keyed on `body:not([data-mode="overview"])`, so the sticky pin and flex sizing revert automatically; the active marker is cleared (`setActiveMarker(doc, null)`) and the detail region hidden; verified.
+- [x] Focus returns to the opening marker when appropriate. — The subscription captures the focused marker on each activation and restores focus (`preventScroll`) on close; project switches update the opener to the newest marker; verified in Chromium (focus lands on the marker button).
+
+**Implementation notes (TASK-026):**
+- Focus restore fires `focusin`, which would re-show the hover card and — for a pointer user — leave it lingering forever (the pointer never enters the marker, so no `pointerleave`); the close path therefore calls `hideHoverCard` explicitly after the focus restore. Caught by the post-implementation browser check, not by unit tests.
+- Repeated close clicks are state no-ops (`closeProject` returns `false` outside detail/viewer states); an open↔close cycle leaves exactly one detail region and a clean overview (unit- and browser-tested).
+- Reduced-motion close is instant (the TASK-025 scroll switch handles it); verified under emulated reduced motion.
 
 ## Phase 6 — Gallery and content viewers
 
