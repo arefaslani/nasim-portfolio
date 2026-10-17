@@ -1213,10 +1213,10 @@ The plan must be committed to version control alongside implementation changes.
 - Avoid interfering with nested scrollable content.
 
 **Acceptance criteria:**
-- [ ] Horizontal trackpad gestures work naturally.
-- [ ] Mouse-wheel navigation works when appropriate.
-- [ ] Page scrolling remains usable.
-- [ ] Nested text and modal scrolling are not hijacked.
+- [x] Horizontal trackpad gestures work naturally. — `deltaX` gestures are left entirely to the browser (never intercepted).
+- [x] Mouse-wheel navigation works when appropriate. — Vertical wheel over the timeline translates into horizontal timeline scrolling (up-wheel = toward newest, down-wheel = toward oldest).
+- [x] Page scrolling remains usable. — At the timeline's scroll edges the gesture is handed back to the page (not consumed); outside the timeline the listener never fires.
+- [x] Nested text and modal scrolling are not hijacked. — The listener is bound only to the timeline container and returns a cleanup function; viewers (TASK-029/030) are separate overlays and never under this listener.
 
 ### TASK-021 — Implement mouse drag scrolling
 

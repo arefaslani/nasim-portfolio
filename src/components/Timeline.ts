@@ -126,3 +126,35 @@ export function centerNewest(
 function defaultIsDesktop(): boolean {
   return window.matchMedia("(min-width: 1024px)").matches;
 }
+
+/**
+ * Wheel/trackpad navigation (TASK-020, Section 6.2).
+ *
+ * - Native horizontal gestures (trackpad deltaX, shift+wheel) are left to
+ *   the browser.
+ * - Vertical wheel movement over the timeline is translated into timeline
+ *   scrolling — but only while the timeline can still scroll in that
+ *   direction, so the page keeps scrolling normally at the edges.
+ * - The listener is passive:false only where we may call preventDefault.
+ *
+ * Returns a cleanup function (Section 8.3).
+ */
+export function enableWheelNavigation(container: HTMLElement): () => void {
+  function onWheel(event: WheelEvent): void {
+    // Horizontal gestures scroll natively; nothing to translate.
+    if (Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+
+    const atStart = container.scrollLeft <= 0;
+    const atEnd = container.scrollLeft + container.clientWidth >= container.scrollWidth;
+    if ((event.deltaY < 0 && atStart) || (event.deltaY > 0 && atEnd)) {
+      // Timeline is at its edge: hand the gesture back to page scrolling.
+      return;
+    }
+
+    event.preventDefault();
+    container.scrollLeft += event.deltaY;
+  }
+
+  container.addEventListener("wheel", onWheel, { passive: false });
+  return () => container.removeEventListener("wheel", onWheel);
+}
