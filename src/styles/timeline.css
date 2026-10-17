@@ -28,6 +28,14 @@
   /* Native scrollbar hidden deliberately (Section 6.2); drag and wheel
      navigation arrive in TASK-020/021, keyboard access is via markers. */
   scrollbar-width: none;
+  /* Drag scrolling (TASK-021): no text selection, no image ghost-drag. */
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+
+.timeline--dragging {
+  cursor: grabbing;
 }
 
 .timeline::-webkit-scrollbar {

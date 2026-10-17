@@ -1234,10 +1234,13 @@ The plan must be committed to version control alongside implementation changes.
 - Clean up pointer state reliably.
 
 **Acceptance criteria:**
-- [ ] Users can drag the timeline horizontally.
-- [ ] A click without meaningful movement activates the marker.
-- [ ] A drag does not accidentally open a project.
-- [ ] Pointer release outside the timeline does not leave it stuck in a dragging state.
+- [x] Users can drag the timeline horizontally. — `enableDragScrolling`: mouse pointer tracking with grab/grabbing cursors; text selection and image ghost-drag disabled on the timeline.
+- [x] A click without meaningful movement activates the marker. — 5px drag threshold; verified in headless Chromium that a plain click still logs a selection after drags.
+- [x] A drag does not accidentally open a project. — Drag releases suppress the trailing click in the capture phase (never reaches the marker handler); threshold-moves under 5px stay clicks.
+- [x] Pointer release outside the timeline does not leave it stuck in a dragging state. — Move/up listeners live on `window`; releasing outside clears the drag state, and the suppressed click never leaks into the next interaction (flag cleared on each new press — a bug the unit tests caught during implementation). Touch pointers are ignored so native touch scrolling is untouched.
+
+**Implementation notes (TASK-021):**
+- Real-browser (headless Chromium) verification: drag scrolls the timeline; a subsequent plain click activates a marker.
 
 ### TASK-022 — Implement custom project hover cards
 

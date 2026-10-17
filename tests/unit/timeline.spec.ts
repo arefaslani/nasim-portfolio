@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   centeredScrollLeft,
   centerNewest,
+  enableDragScrolling,
   enableWheelNavigation,
   renderTimeline,
   setActiveMarker,
@@ -238,5 +239,106 @@ describe("centerNewest (TASK-019)", () => {
     withGeometry(doc.querySelector(".timeline__item")!, { offsetLeft: 900, offsetWidth: 96 });
     centerNewest(doc, { isDesktop: () => true });
     expect(container.scrollLeft).toBe(698); // 900 - (500-96)/2
+  });
+});
+
+describe("enableDragScrolling (TASK-021)", () => {
+  /** jsdom lacks PointerEvent construction in some versions; fake one. */
+  function pointerEvent(type: string, options: Record<string, unknown>): Event {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    const defaults = { pointerId: 1, pointerType: "mouse", isPrimary: true, clientX: 0, button: 0 };
+    for (const [key, value] of Object.entries({ ...defaults, ...options })) {
+      Object.defineProperty(event, key, { value, configurable: true });
+    }
+    return event;
+  }
+
+  function draggableContainer(): HTMLElement {
+    const container = doc.getElementById("timeline")!;
+    Object.defineProperty(container, "clientWidth", { value: 500, configurable: true });
+    Object.defineProperty(container, "scrollWidth", { value: 2000, configurable: true });
+    container.scrollLeft = 100;
+    return container;
+  }
+
+  it("scrolls horizontally when dragged beyond the threshold", () => {
+    const container = draggableContainer();
+    const cleanup = enableDragScrolling(container);
+    container.dispatchEvent(pointerEvent("pointerdown", { clientX: 200, pointerId: 1, pointerType: "mouse", isPrimary: true }));
+    window.dispatchEvent(pointerEvent("pointermove", { clientX: 260, pointerId: 1, pointerType: "mouse" }));
+    expect(container.scrollLeft).toBe(40); // 100 - 60
+    expect(container.classList.contains("timeline--dragging")).toBe(true);
+    window.dispatchEvent(pointerEvent("pointerup", { clientX: 260, pointerId: 1, pointerType: "mouse" }));
+    expect(container.classList.contains("timeline--dragging")).toBe(false);
+    cleanup();
+  });
+
+  it("activates the marker on a click without meaningful movement", () => {
+    const container = draggableContainer();
+    const selected: string[] = [];
+    renderTimeline(doc, makeManifest(["2026-12-03"]), (id) => selected.push(id));
+    enableDragScrolling(container);
+
+    const marker = container.querySelector(".timeline__marker") as HTMLButtonElement;
+    container.dispatchEvent(pointerEvent("pointerdown", { clientX: 200, pointerId: 1, pointerType: "mouse", isPrimary: true }));
+    // Tiny move below the 5px threshold: still a click.
+    window.dispatchEvent(pointerEvent("pointermove", { clientX: 202, pointerId: 1, pointerType: "mouse" }));
+    window.dispatchEvent(pointerEvent("pointerup", { clientX: 202, pointerId: 1, pointerType: "mouse" }));
+    marker.click();
+    expect(selected).toEqual(["2026-12-03"]);
+  });
+
+  it("does not activate the marker when the click follows a drag", () => {
+    const container = draggableContainer();
+    const selected: string[] = [];
+    renderTimeline(doc, makeManifest(["2026-12-03"]), (id) => selected.push(id));
+    enableDragScrolling(container);
+
+    const marker = container.querySelector(".timeline__marker") as HTMLButtonElement;
+    container.dispatchEvent(pointerEvent("pointerdown", { clientX: 200, pointerId: 1, pointerType: "mouse", isPrimary: true }));
+    window.dispatchEvent(pointerEvent("pointermove", { clientX: 300, pointerId: 1, pointerType: "mouse" }));
+    window.dispatchEvent(pointerEvent("pointerup", { clientX: 300, pointerId: 1, pointerType: "mouse" }));
+    marker.click(); // browser fires click after drag release; must be suppressed
+    expect(selected).toEqual([]);
+  });
+
+  it("ends the drag cleanly when released outside the timeline", () => {
+    const container = draggableContainer();
+    const selected: string[] = [];
+    renderTimeline(doc, makeManifest(["2026-12-03"]), (id) => selected.push(id));
+    enableDragScrolling(container);
+    const marker = container.querySelector(".timeline__marker") as HTMLButtonElement;
+
+    container.dispatchEvent(pointerEvent("pointerdown", { clientX: 200 }));
+    window.dispatchEvent(pointerEvent("pointermove", { clientX: 300 }));
+    // Release far outside the timeline (no bubbling to container).
+    window.dispatchEvent(pointerEvent("pointerup", { clientX: 900 }));
+    expect(container.classList.contains("timeline--dragging")).toBe(false);
+
+    // The next press+click must not be suppressed by the old drag,
+    // even though no click followed the release.
+    container.dispatchEvent(pointerEvent("pointerdown", { clientX: 200 }));
+    window.dispatchEvent(pointerEvent("pointerup", { clientX: 200 }));
+    marker.click();
+    expect(selected).toEqual(["2026-12-03"]);
+  });
+
+  it("ignores non-mouse pointers (touch scrolls natively)", () => {
+    const container = draggableContainer();
+    enableDragScrolling(container);
+    container.dispatchEvent(pointerEvent("pointerdown", { clientX: 200, pointerType: "touch" }));
+    window.dispatchEvent(pointerEvent("pointermove", { clientX: 300, pointerType: "touch" }));
+    expect(container.scrollLeft).toBe(100);
+    expect(container.classList.contains("timeline--dragging")).toBe(false);
+  });
+
+  it("cleanup removes all listeners (Section 8.3)", () => {
+    const container = draggableContainer();
+    const cleanup = enableDragScrolling(container);
+    cleanup();
+    container.dispatchEvent(pointerEvent("pointerdown", { clientX: 200, pointerId: 1, pointerType: "mouse", isPrimary: true }));
+    window.dispatchEvent(pointerEvent("pointermove", { clientX: 300, pointerId: 1, pointerType: "mouse" }));
+    expect(container.scrollLeft).toBe(100);
+    expect(container.classList.contains("timeline--dragging")).toBe(false);
   });
 });

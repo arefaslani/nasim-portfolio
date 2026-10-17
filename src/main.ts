@@ -1,6 +1,7 @@
 import { renderIntro } from "./components/Intro.ts";
 import {
   centerNewest,
+  enableDragScrolling,
   enableWheelNavigation,
   renderTimeline,
 } from "./components/Timeline.ts";
@@ -28,5 +29,6 @@ if (appData === null) {
   const timeline = document.getElementById("timeline");
   if (timeline !== null) {
     enableWheelNavigation(timeline);
+    enableDragScrolling(timeline);
   }
 }

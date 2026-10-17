@@ -158,3 +158,88 @@ export function enableWheelNavigation(container: HTMLElement): () => void {
   container.addEventListener("wheel", onWheel, { passive: false });
   return () => container.removeEventListener("wheel", onWheel);
 }
+
+/**
+ * Mouse drag scrolling (TASK-021, Section 6.2).
+ *
+ * - Desktop pointer only (`pointerType: "mouse"`); touch devices scroll
+ *   the timeline natively.
+ * - A movement threshold separates clicks from drags: a drag never
+ *   activates a marker, a click always does.
+ * - Move/release listeners live on window so releasing the pointer
+ *   outside the timeline never leaves it stuck in a dragging state.
+ * - Text selection and native image dragging are disabled on the
+ *   timeline; image dragging would otherwise swallow pointer events.
+ *
+ * Returns a cleanup function (Section 8.3).
+ */
+export function enableDragScrolling(container: HTMLElement): () => void {
+  const DRAG_THRESHOLD_PX = 5;
+  let activePointerId: number | null = null;
+  let startX = 0;
+  let startScrollLeft = 0;
+  let dragging = false;
+  let suppressNextClick = false;
+
+  function onPointerDown(event: PointerEvent): void {
+    if (!event.isPrimary || event.button !== 0 || event.pointerType !== "mouse") {
+      return;
+    }
+    activePointerId = event.pointerId;
+    startX = event.clientX;
+    startScrollLeft = container.scrollLeft;
+    dragging = false;
+    // A new press always starts fresh: a drag released outside the
+    // timeline fires no click, so the flag must not survive into the
+    // next interaction.
+    suppressNextClick = false;
+    container.classList.add("timeline--dragging");
+  }
+
+  function onPointerMove(event: PointerEvent): void {
+    if (event.pointerId !== activePointerId) return;
+    const dx = event.clientX - startX;
+    if (!dragging && Math.abs(dx) < DRAG_THRESHOLD_PX) return;
+    dragging = true;
+    container.scrollLeft = startScrollLeft - dx;
+  }
+
+  function finishDrag(): void {
+    if (activePointerId === null) return;
+    suppressNextClick = dragging;
+    activePointerId = null;
+    dragging = false;
+    container.classList.remove("timeline--dragging");
+  }
+
+  function onClickCapture(event: MouseEvent): void {
+    if (!suppressNextClick) return;
+    suppressNextClick = false;
+    // A drag must never activate a marker (Section 6.2).
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function onDragStart(event: Event): void {
+    event.preventDefault();
+  }
+
+  container.addEventListener("pointerdown", onPointerDown);
+  container.addEventListener("click", onClickCapture, true);
+  container.addEventListener("dragstart", onDragStart);
+  // Move/up live on window so a drag that leaves the timeline still
+  // scrolls, and a release outside it always ends the drag cleanly.
+  window.addEventListener("pointermove", onPointerMove);
+  window.addEventListener("pointerup", finishDrag);
+  window.addEventListener("pointercancel", finishDrag);
+
+  return () => {
+    container.removeEventListener("pointerdown", onPointerDown);
+    container.removeEventListener("click", onClickCapture, true);
+    container.removeEventListener("dragstart", onDragStart);
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", finishDrag);
+    window.removeEventListener("pointercancel", finishDrag);
+    container.classList.remove("timeline--dragging");
+  };
+}
