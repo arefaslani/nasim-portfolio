@@ -26,9 +26,9 @@ if (appData === null) {
   // The app never auto-centers again afterward (Section 6.1).
   centerNewest(document);
 
-  const timeline = document.getElementById("timeline");
-  if (timeline !== null) {
-    enableWheelNavigation(timeline);
-    enableDragScrolling(timeline);
+  const scroller = document.querySelector<HTMLElement>(".timeline-scroller");
+  if (scroller !== null) {
+    enableWheelNavigation(scroller);
+    enableDragScrolling(scroller);
   }
 }

@@ -54,9 +54,13 @@
   </main>
 
   <!-- Timeline navigation: horizontal on desktop, vertical on mobile.
-       Markers are rendered by Timeline.ts (TASK-018). -->
+       Markers are rendered by Timeline.ts (TASK-018). The scroller is
+       the scroll container; the list is content-width so decorations
+       (the line) can span the full scrolled content. -->
   <nav id="timeline-region" data-state-region="timeline" aria-label="Projects timeline">
-    <ol id="timeline" class="timeline"></ol>
+    <div class="timeline-scroller">
+      <ol id="timeline" class="timeline"></ol>
+    </div>
   </nav>
 
   <!-- Overlays: large image viewer and text viewer (TASK-029/030). -->

@@ -9,22 +9,9 @@
   padding-block: var(--space-8) var(--space-12);
 }
 
-.timeline {
-  --timeline-marker-size: 6rem;
-
-  display: flex;
-  gap: var(--space-12);
-  list-style: none;
-  margin: 0;
-  padding: var(--space-4) var(--page-gutter) var(--space-4);
-  /* Fit the content when it is narrow (centered via auto margins), but
-     never exceed the viewport: the max-width cap is what makes the
-     container actually scroll when content is wide. */
-  width: max-content;
-  max-width: 100%;
-  margin-inline: auto;
+/* The scroll container: viewport-width, scrolls overflowing content. */
+.timeline-scroller {
   overflow-x: auto;
-  position: relative;
   /* Native scrollbar hidden deliberately (Section 6.2); drag and wheel
      navigation arrive in TASK-020/021, keyboard access is via markers. */
   scrollbar-width: none;
@@ -34,12 +21,27 @@
   cursor: grab;
 }
 
-.timeline--dragging {
+.timeline-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.timeline-scroller.timeline--dragging {
   cursor: grabbing;
 }
 
-.timeline::-webkit-scrollbar {
-  display: none;
+/* Content-width list: as wide as its items, so the line (::before)
+   spans the entire scrolled content, not just the viewport. Centered
+   within the scroller when the content is narrower. */
+.timeline {
+  --timeline-marker-size: 6rem;
+
+  display: flex;
+  gap: var(--space-12);
+  list-style: none;
+  margin: 0 auto;
+  padding: var(--space-4) var(--page-gutter) var(--space-4);
+  width: max-content;
+  position: relative;
 }
 
 /* The continuous line: a single rule behind the markers. */

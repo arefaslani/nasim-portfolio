@@ -113,7 +113,7 @@ export function centerNewest(
   const isDesktop = options.isDesktop ?? defaultIsDesktop;
   if (!isDesktop()) return;
 
-  const container = doc.getElementById("timeline");
+  const container = doc.querySelector<HTMLElement>(".timeline-scroller");
   if (container === null) return;
   const newest = container.querySelector<HTMLElement>(".timeline__item");
   if (newest === null) return;

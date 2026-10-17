@@ -29,7 +29,7 @@ function makeManifest(projectIds: string[]): ProjectManifest {
 beforeEach(() => {
   document.body.innerHTML = `
     <main><p id="empty-state" hidden></p></main>
-    <nav><ol id="timeline"></ol></nav>
+    <nav><div class="timeline-scroller"><ol id="timeline"></ol></div></nav>
   `;
 });
 
@@ -115,7 +115,7 @@ describe("date formatting", () => {
 describe("enableWheelNavigation (TASK-020)", () => {
   /** jsdom has no layout: fake the scroll geometry on the container. */
   function scrollableContainer(): HTMLElement {
-    const container = doc.getElementById("timeline")!;
+    const container = doc.querySelector(".timeline-scroller") as HTMLElement;
     Object.defineProperty(container, "clientWidth", { value: 500, configurable: true });
     Object.defineProperty(container, "scrollWidth", { value: 2000, configurable: true });
     container.scrollLeft = 100;
@@ -205,7 +205,7 @@ describe("centerNewest (TASK-019)", () => {
 
   it("centers the newest (first) marker on desktop", () => {
     renderTimeline(doc, makeManifest(["2026-12-03", "2026-11-20"]), () => {});
-    const container = doc.getElementById("timeline")!;
+    const container = doc.querySelector(".timeline-scroller") as HTMLElement;
     withGeometry(container, { offsetLeft: 0, offsetWidth: 1000, clientWidth: 500 });
     withGeometry(doc.querySelector(".timeline__item")!, {
       offsetLeft: 48,
@@ -217,7 +217,7 @@ describe("centerNewest (TASK-019)", () => {
 
   it("does nothing on mobile", () => {
     renderTimeline(doc, makeManifest(["2026-12-03"]), () => {});
-    const container = doc.getElementById("timeline")!;
+    const container = doc.querySelector(".timeline-scroller") as HTMLElement;
     withGeometry(container, { offsetLeft: 0, offsetWidth: 1000, clientWidth: 500 });
     withGeometry(doc.querySelector(".timeline__item")!, { offsetLeft: 300, offsetWidth: 96 });
     centerNewest(doc, { isDesktop: () => false });
@@ -226,7 +226,7 @@ describe("centerNewest (TASK-019)", () => {
 
   it("handles an empty timeline without scrolling", () => {
     renderTimeline(doc, { schemaVersion: 1, projects: [] }, () => {});
-    const container = doc.getElementById("timeline")!;
+    const container = doc.querySelector(".timeline-scroller") as HTMLElement;
     withGeometry(container, { offsetLeft: 0, offsetWidth: 1000, clientWidth: 500 });
     expect(() => centerNewest(doc, { isDesktop: () => true })).not.toThrow();
     expect(container.scrollLeft).toBe(0);
@@ -234,7 +234,7 @@ describe("centerNewest (TASK-019)", () => {
 
   it("computes a positive offset for a marker beyond the viewport center", () => {
     renderTimeline(doc, makeManifest(["2026-12-03"]), () => {});
-    const container = doc.getElementById("timeline")!;
+    const container = doc.querySelector(".timeline-scroller") as HTMLElement;
     withGeometry(container, { offsetLeft: 0, offsetWidth: 2000, clientWidth: 500 });
     withGeometry(doc.querySelector(".timeline__item")!, { offsetLeft: 900, offsetWidth: 96 });
     centerNewest(doc, { isDesktop: () => true });
@@ -254,7 +254,7 @@ describe("enableDragScrolling (TASK-021)", () => {
   }
 
   function draggableContainer(): HTMLElement {
-    const container = doc.getElementById("timeline")!;
+    const container = doc.querySelector(".timeline-scroller") as HTMLElement;
     Object.defineProperty(container, "clientWidth", { value: 500, configurable: true });
     Object.defineProperty(container, "scrollWidth", { value: 2000, configurable: true });
     container.scrollLeft = 100;
