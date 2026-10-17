@@ -924,10 +924,10 @@ The plan must be committed to version control alongside implementation changes.
 - Document the manifest schema.
 
 **Acceptance criteria:**
-- [ ] Types are centralized.
-- [ ] Build-time and browser-side code use compatible schemas.
-- [ ] The schema is versioned.
-- [ ] Type checking passes.
+- [x] Types are centralized. — `src/data/types.ts` defines `ProjectAsset`, `Project`, `ProjectManifest`, plus the extension lists, date pattern, and required-file constants.
+- [x] Build-time and browser-side code use compatible schemas. — Build scripts will import the same constants from `src/data/types.ts` (bundled via esbuild) rather than duplicating them; unit tests pin the values.
+- [x] The schema is versioned. — `MANIFEST_SCHEMA_VERSION = 1` with the shape documented in the module header.
+- [x] Type checking passes. — `tsc --noEmit` passes; 7/7 unit tests pass (including the manifest shape test).
 
 ### TASK-006 — Implement date and filename validation
 
