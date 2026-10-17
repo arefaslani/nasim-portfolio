@@ -2,20 +2,21 @@ import type { Project } from "../data/types.ts";
 import { formatDate } from "../utils/dates.ts";
 import { hideHoverCard } from "./HoverCard.ts";
 import { setActiveMarker } from "./Timeline.ts";
+import { renderMosaic } from "./ProjectGallery.ts";
 import type { ViewStateManager } from "../services/view-state.ts";
 
 /**
- * Project detail region (TASK-024/026): opens a project from the
- * timeline by revealing #project-detail with the active date, and
- * closes it back to the overview through the state model. The mosaic
- * content is TASK-027 — this task guarantees correct, duplicate-free
- * selection and a repeatable, focus-restoring close (Section 6.8).
+ * Project detail region (TASK-024/026/027): opens a project from the
+ * timeline by revealing #project-detail with the active date, renders
+ * its gallery mosaic, and closes it back to the overview through the
+ * state model — correct, duplicate-free selection and a repeatable,
+ * focus-restoring close (Sections 6.4 and 6.8).
  */
 
 /**
  * Reveal the detail region for `project` and move focus to its date
- * heading. Safe to call repeatedly: the mosaic is cleared (its content
- * is rendered per activation in TASK-027), never appended to.
+ * heading. Safe to call repeatedly: the mosaic is cleared, never
+ * appended to.
  */
 export function showProjectDetail(doc: Document, project: Project): void {
   const section = doc.getElementById("project-detail");
@@ -70,6 +71,12 @@ export function initProjectDetail(
       if (marker !== null) opener = marker;
       setActiveMarker(doc, next.projectId);
       showProjectDetail(doc, project);
+      // Gallery tiles open viewers through the state model; the viewer
+      // dialogs themselves light up in TASK-029/030.
+      renderMosaic(doc, project, {
+        onOpenImage: (assetIndex) => state.openImage(next.projectId, assetIndex),
+        onOpenText: (asset) => state.openText(next.projectId, asset.path),
+      });
       hideHoverCard(hoverCard);
       return;
     }

@@ -1375,11 +1375,17 @@ The plan must be committed to version control alongside implementation changes.
 - Provide loading states for text files.
 
 **Acceptance criteria:**
-- [ ] Every eligible gallery asset is represented.
-- [ ] Unsupported files are excluded.
-- [ ] The correct project assets are shown.
-- [ ] Tile labels and image alternatives are appropriate.
-- [ ] Missing assets do not break the entire gallery.
+- [x] Every eligible gallery asset is represented. — `src/components/ProjectGallery.ts` renders one tile per manifest asset into `#mosaic` on activation (wired from `initProjectDetail`'s subscription); unit-tested, and real-browser-verified with the multi-asset projects.
+- [x] Unsupported files are excluded. — Discovery already rejects unsupported extensions before the manifest exists (TASK-007); the renderer renders only manifest assets, so an unsupported file can never reach a tile.
+- [x] The correct project assets are shown. — `renderMosaic` renders exactly the assets of the state's active project (looked up from the state diff); switching projects re-renders without duplication (unit- and browser-tested); tile clicks transition the state model (`openImage` by asset index, `openText` by asset path).
+- [x] Tile labels and image alternatives are appropriate. — Image tiles carry `alt` from the asset filename and an `aria-label`ed frame button; text tiles are labeled buttons showing the filename in a legible mono label (Section 4.3); a text asset sharing an image's basename becomes that image's caption (`figcaption`), not a separate tile — pairing is order-independent and unit-tested.
+- [x] Missing assets do not break the entire gallery. — An image `error` degrades its own tile to a labeled dashed placeholder (`mosaic__tile--image-failed`), leaving other tiles untouched; an empty asset list renders an empty mosaic without error.
+
+**Implementation notes (TASK-027):**
+- Baseline styling in `src/styles/gallery.css` (bordered surface tiles, mono filename labels, fallback placeholder) is deliberately plain; the art-directed grid composition is TASK-028.
+- First image tile loads `eager`, the rest `lazy` (Section 8.4). Text tiles fetch nothing — text loads on demand in the viewer (TASK-030), so "loading states for text files" belongs to the viewer task.
+- Tile clicks already transition the view state (`image`/`text` modes verified in the browser); the viewer dialogs themselves render in TASK-029/030.
+- 15 new unit tests in `tests/unit/project-gallery.spec.ts`; 186/186 pass, `tsc --noEmit` clean. Headless-Chromium verification against the real build: tiles render with correct counts/captions, image loads (`naturalWidth > 0`), tile clicks transition state, close restores overview, no console errors.
 
 ### TASK-028 — Implement the editorial mosaic layout
 
