@@ -908,10 +908,10 @@ The plan must be committed to version control alongside implementation changes.
 - Add development, build, validation, and test commands.
 
 **Acceptance criteria:**
-- [ ] TypeScript compiles successfully.
-- [ ] Dependency versions are locked.
-- [ ] Required npm scripts exist.
-- [ ] A minimal build and test run succeeds.
+- [x] TypeScript compiles successfully. — `tsc --noEmit` (TypeScript 7, strict mode) passes on `src/main.ts` and `tests/`.
+- [x] Dependency versions are locked. — `package-lock.json` committed; `typescript@^7.0.2`, `esbuild@^0.28.2`, `vitest@^5.0.5` as devDependencies.
+- [x] Required npm scripts exist. — `validate`, `build`, `test`, `dev`, `check` from Section 5.2. `test:e2e` (Playwright) is deferred to Phase 8 when it is needed, per the plan's allowance to adjust the initial contract.
+- [x] A minimal build and test run succeeds. — `npm run test` passes (1 smoke test), `npm run validate` and `npm run build` run as stubs pending TASK-006/TASK-012.
 
 ### TASK-005 — Define shared project and manifest types
 

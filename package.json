@@ -1,0 +1,19 @@
+{
+  "name": "nasim-portfolio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Date-driven portfolio timeline website, deployed to GitHub Pages",
+  "type": "module",
+  "scripts": {
+    "validate": "node scripts/validate-projects.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "vitest run",
+    "dev": "vite --host 127.0.0.1",
+    "check": "npm run validate && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}
