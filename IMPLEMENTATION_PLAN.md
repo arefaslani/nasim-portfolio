@@ -941,11 +941,11 @@ The plan must be committed to version control alongside implementation changes.
 - Exclude hidden files and generated system files.
 
 **Acceptance criteria:**
-- [ ] Valid dates are accepted.
-- [ ] Invalid dates are rejected with clear diagnostics.
-- [ ] Unsupported extensions are excluded.
-- [ ] Duplicate featured-image candidates are detected.
-- [ ] Unit tests cover the edge cases.
+- [x] Valid dates are accepted. — `isValidProjectDirName` accepts `YYYY-MM-DD` real calendar dates, including leap days in leap years.
+- [x] Invalid dates are rejected with clear diagnostics. — Malformed formats and impossible dates (`2026-02-30`, `2025-13-01`) are rejected; `scripts/validate-projects.mjs` reports each offending folder and exits 1.
+- [x] Unsupported extensions are excluded. — Extension lists are centralized in `src/data/types.ts`; `isSupportedImageFile`/`isSupportedTextFile` classify case-insensitively; hidden and system files are excluded via `isExcludedFileName`.
+- [x] Duplicate featured-image candidates are detected. — `findFeaturedImageCandidates` returns all basename-`0` image matches so callers can flag 0-candidate and multi-candidate cases.
+- [x] Unit tests cover the edge cases. — 14 new tests: date formats, impossible dates, leap years, extension handling, hidden-file exclusion, featured-image candidates. All 21 tests pass; `tsc --noEmit` clean.
 
 ### TASK-007 — Implement project discovery
 
