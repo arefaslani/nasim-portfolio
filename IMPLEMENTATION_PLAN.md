@@ -1582,10 +1582,10 @@ The plan must be committed to version control alongside implementation changes.
 - Confirm deterministic output.
 
 **Acceptance criteria:**
-- [ ] All build and integration tests pass.
-- [ ] Invalid inputs produce actionable errors.
-- [ ] Every output reference resolves correctly.
-- [ ] Clean builds do not depend on local state.
+- [x] All build and integration tests pass. — `tests/integration/release.integration.spec.ts` (9 new tests) joins the existing build/base-path/discovery suites; 223/223 tests pass, `tsc --noEmit` clean.
+- [x] Invalid inputs produce actionable errors. — Build-level failure tests assert named diagnostics (with the offending folder/date) for: missing featured image, ambiguous featured image, empty `0.txt`, unresolvable profile image, invalid folder name, missing profile config, malformed base path.
+- [x] Every output reference resolves correctly. — The embedded manifest is parsed out of the built HTML and every `featuredImage`/asset path (and the profile image) is asserted to exist in `dist/`; the copied project directory is asserted to contain exactly the referenced files (no `0.txt`, no unsupported files), and no local absolute paths or traversal sequences appear in output.
+- [x] Clean builds do not depend on local state. — Builds run in temp roots from fixture content only; a rebuild after content changes clears stale `dist/` artifacts; two independent temp roots with identical inputs produce byte-identical output (path-relative comparison).
 
 ### TASK-037 — Complete browser end-to-end tests (SKIP, DO NOT IMPLEMENT)
 
