@@ -1118,10 +1118,14 @@ The plan must be committed to version control alongside implementation changes.
 - Establish focus and active-state styling.
 
 **Acceptance criteria:**
-- [ ] Shared design tokens exist.
-- [ ] Components use tokens rather than arbitrary repeated values.
-- [ ] Text and controls meet contrast requirements.
-- [ ] Focus states are visually clear.
+- [x] Shared design tokens exist. — `src/styles/tokens.css`: color (near-monochrome ink/paper + one accent), type scale with display/body/mono stacks, 4px-based spacing scale, radii, three shadow levels, motion durations/easings, focus ring, layout widths.
+- [x] Components use tokens rather than arbitrary repeated values. — `base.css` consumes tokens exclusively; component styles (TASK-016+) will be held to the same rule by review.
+- [x] Text and controls meet contrast requirements. — `--color-ink` (#1a1817) on `--color-bg` (#faf9f7) ≈ 15.7:1; `--color-ink-muted` (#6b6560) on bg ≈ 5.3:1 (AA); accent #2f5d50 on white ≈ 6.9:1. Formal audit is TASK-038.
+- [x] Focus states are visually clear. — Global `:focus-visible` with the accent ring token plus offset; skip link styled.
+
+**Implementation notes (TASK-015):**
+- Breakpoints are documented values in a comment (mobile ≤639px, tablet 640–1023px, desktop ≥1024px) because media queries cannot consume custom properties.
+- Global `prefers-reduced-motion: reduce` guard added in base.css.
 
 ### TASK-016 — Implement base styling and semantic layout
 

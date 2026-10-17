@@ -1,11 +1,9 @@
 /*
- * Base styles (placeholder — TASK-015 defines the real token set and
- * TASK-016 the full base layout). Present so the build pipeline inlines
- * real CSS from the first working build.
+ * Base styles (TASK-016 completes the full layout). Consumes the token
+ * set from tokens.css. The build concatenates stylesheets in sorted
+ * order; token definitions are :root custom properties, so sort order
+ * does not affect them.
  */
-:root {
-  --page-max-width: 72rem;
-}
 
 *,
 *::before,
@@ -15,7 +13,40 @@
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--text-size-md);
+  line-height: var(--line-height-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  line-height: var(--line-height-tight);
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* Visible, consistent focus for every interactive element. */
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .skip-link {
@@ -24,8 +55,21 @@ body {
 }
 
 .skip-link:focus-visible {
-  left: 1rem;
-  top: 1rem;
-  background: white;
-  padding: 0.5rem 1rem;
+  left: var(--space-4);
+  top: var(--space-4);
+  z-index: 100;
+  background: var(--color-surface);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-raised);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
