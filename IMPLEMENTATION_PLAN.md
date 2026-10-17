@@ -1022,10 +1022,10 @@ The plan must be committed to version control alongside implementation changes.
 - Ensure the image resolves to a supported asset.
 
 **Acceptance criteria:**
-- [ ] A valid profile configuration loads successfully.
-- [ ] Missing required fields fail the build.
-- [ ] An invalid profile image path fails the build.
-- [ ] Profile text is treated as untrusted content.
+- [x] A valid profile configuration loads successfully. — `content/profile.json` with placeholder values validates; `npm run validate` reports `profile OK`. Committed fixture copy in `tests/fixtures/content/` for tests.
+- [x] Missing required fields fail the build. — All five fields (`name`, `headline`, `intro`, `image`, `imageAlt`) must be nonempty strings; unit tests cover each missing/empty field, non-object JSON, and invalid JSON.
+- [x] An invalid profile image path fails the build. — Unsupported extensions, hidden files, traversal (`..`), and absolute paths are rejected; a path that does not exist on disk fails via `validateProfileImageResolves`.
+- [x] Profile text is treated as untrusted content. — Validation only checks shape; renderers must use `textContent` (enforced in Phase 3+ tasks; documented in `src/lib/profile.ts`).
 
 ### TASK-011 — Create the HTML source template
 
