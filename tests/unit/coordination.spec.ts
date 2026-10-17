@@ -1,0 +1,258 @@
+// @vitest-environment jsdom
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { initImageViewer } from "../../src/components/ImageViewer";
+import { initTextViewer } from "../../src/components/TextViewer";
+import { initProjectDetail } from "../../src/components/ProjectDetail";
+import { initTransitions } from "../../src/services/navigation";
+import { createViewStateManager, type ViewStateManager } from "../../src/services/view-state";
+import { renderTimeline } from "../../src/components/Timeline";
+import type { Project, ProjectAsset } from "../../src/data/types";
+
+/**
+ * Overlay/transition coordination (TASK-031): the full wiring as in
+ * main.ts — detail region, both viewers, gallery rendering, and the
+ * TASK-025 choreography on one state model — exercised across the
+ * nested states of Section 6.10. Interrupted and interleaved
+ * transitions must always resolve to one unambiguous state (Section
+ * 6.8) with no duplicated regions, stale overlays, or repeated scrolls.
+ */
+
+const doc = document;
+
+function asset(type: "image" | "text", name: string): ProjectAsset {
+  return { type, name, path: `projects/${name}`, mimeType: "image/png" };
+}
+
+const projects: Project[] = [
+  {
+    id: "2026-12-03",
+    date: "2026-12-03",
+    description: "Newest project",
+    featuredImage: "projects/2026-12-03/0.webp",
+    assets: [asset("image", "a.png"), asset("text", "notes.txt")],
+  },
+  {
+    id: "2026-11-20",
+    date: "2026-11-20",
+    description: "Older project",
+    featuredImage: "projects/2026-11-20/0.webp",
+    assets: [asset("image", "b.png"), asset("image", "c.png")],
+  },
+];
+
+beforeEach(() => {
+  document.body.innerHTML = `
+    <header id="intro"></header>
+    <main>
+      <section id="project-detail" hidden aria-labelledby="project-date">
+        <div class="project-detail__header">
+          <h2 id="project-date" tabindex="-1"></h2>
+          <button id="close-project" type="button" aria-label="Close project and return to timeline"></button>
+        </div>
+        <div id="mosaic" class="mosaic"></div>
+      </section>
+    </main>
+    <nav><div class="timeline-scroller"><ol id="timeline"></ol></div></nav>
+    <div id="timeline-hover-card" data-visible="false"></div>
+    <dialog id="image-viewer" class="viewer image-viewer" aria-label="Image viewer">
+      <button class="viewer__close" type="button" aria-label="Close image viewer"></button>
+      <img id="image-viewer-img" alt="" />
+      <nav class="viewer__nav" aria-label="Image navigation">
+        <button id="image-prev" type="button" aria-label="Previous image"></button>
+        <button id="image-next" type="button" aria-label="Next image"></button>
+      </nav>
+    </dialog>
+    <dialog id="text-viewer" class="viewer text-viewer" aria-label="Text viewer">
+      <button class="viewer__close" type="button" aria-label="Close text viewer"></button>
+      <h3 id="text-viewer-title"></h3>
+      <pre id="text-viewer-content"></pre>
+    </dialog>
+  `;
+  document.body.dataset.mode = "overview";
+  shimDialogs();
+});
+
+/** jsdom implements no <dialog> methods; shim the modal bits the components rely on. */
+function shimDialogs() {
+  for (const id of ["image-viewer", "text-viewer"]) {
+    const dialog = document.getElementById(id) as HTMLDialogElement;
+    dialog.showModal = function showModal() {
+      this.setAttribute("open", "");
+    };
+    dialog.close = function close() {
+      this.removeAttribute("open");
+      this.dispatchEvent(new Event("close"));
+    };
+  }
+}
+
+/**
+ * Full main.ts wiring (minus the empty-project guards): detail region,
+ * viewers, gallery rendering on activation, and the choreography with a
+ * scroll spy. Returns the state and the recorded scroll targets.
+ */
+function setup(fetchResponses?: Record<string, string>) {
+  if (fetchResponses !== undefined) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (path: string) =>
+        ({ ok: true, status: 200, text: async () => fetchResponses[path]! }) as unknown as Response,
+      ),
+    );
+  }
+
+  const state = createViewStateManager(projects.map((project) => project.id));
+  const scrolls: number[] = [];
+  const card = doc.getElementById("timeline-hover-card") as HTMLElement;
+  initProjectDetail(doc, state, projects, card);
+  initImageViewer(doc, state, projects);
+  initTextViewer(doc, state, projects);
+  initTransitions(doc, state, (top) => scrolls.push(top));
+  renderTimeline(doc, { schemaVersion: 1, projects }, (id) => {
+    state.openProject(id);
+  });
+  return { state, scrolls };
+}
+
+const imageView = () => doc.getElementById("image-viewer") as HTMLDialogElement;
+const textView = () => doc.getElementById("text-viewer") as HTMLDialogElement;
+
+function openFirstImage(state: ViewStateManager): HTMLButtonElement {
+  const frame = doc.querySelector("#mosaic .mosaic__frame") as HTMLButtonElement;
+  frame.focus();
+  frame.click();
+  expect(state.get().mode).toBe("image");
+  return frame;
+}
+
+describe("overlays and project detail share one state (TASK-031)", () => {
+  it("only one viewer can be open at a time", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, status: 200, text: async () => "doc" }) as unknown as Response),
+    );
+    const { state } = setup();
+    state.openProject(projects[0]!.id);
+    openFirstImage(state);
+    expect(imageView().open).toBe(true);
+    expect(textView().open).toBe(false);
+
+    // Switching viewer kinds replaces the open dialog, never stacks.
+    (doc.querySelector('button[aria-label="Open text file notes.txt"]') as HTMLButtonElement).click();
+    expect(state.get().mode).toBe("text");
+    expect(imageView().open).toBe(false);
+    expect(textView().open).toBe(true);
+  });
+
+  it("closing an overlay returns to that project's detail, region intact", () => {
+    const { state, scrolls } = setup({ "projects/2026-12-03/notes.txt": "hello" });
+    (doc.querySelector(".timeline__marker") as HTMLButtonElement).click();
+    expect(state.get()).toEqual({ mode: "project", projectId: "2026-12-03" });
+    scrolls.length = 0; // the overview→detail scroll already happened
+
+    const frame = openFirstImage(state);
+    imageView().close(); // what Escape triggers
+    expect(state.get()).toEqual({ mode: "project", projectId: "2026-12-03" });
+    expect(doc.getElementById("project-detail")?.hidden).toBe(false);
+    expect(doc.activeElement).toBe(frame); // tile focus restored
+    expect(doc.body.dataset.mode).toBe("project");
+    expect(scrolls).toEqual([]); // viewer↔detail never re-scrolls (Section 6.4)
+
+    // Same for the text viewer.
+    (doc.querySelector('button[aria-label="Open text file notes.txt"]') as HTMLButtonElement).click();
+    textView().close();
+    expect(state.get()).toEqual({ mode: "project", projectId: "2026-12-03" });
+    expect(doc.getElementById("project-detail")?.hidden).toBe(false);
+    expect(scrolls).toEqual([]);
+  });
+
+  it("closing the project from a viewer dismisses the overlay and restores the overview", () => {
+    const { state, scrolls } = setup();
+    const marker = doc.querySelector(".timeline__marker") as HTMLButtonElement;
+    marker.focus();
+    marker.click();
+    openFirstImage(state);
+    scrolls.length = 0;
+
+    state.closeProject();
+    expect(state.get()).toEqual({ mode: "overview" });
+    expect(imageView().open).toBe(false); // overlay closed, not orphaned
+    expect(doc.getElementById("project-detail")?.hidden).toBe(true);
+    expect(doc.body.dataset.mode).toBe("overview");
+    expect(doc.activeElement).toBe(marker); // marker focus, not the tile's
+    expect(scrolls).toEqual([0]); // one restore scroll, exactly once
+  });
+
+  it("selecting another marker from a viewer switches projects cleanly", () => {
+    const { state } = setup();
+    (doc.querySelector(".timeline__marker") as HTMLButtonElement).click();
+    openFirstImage(state);
+
+    (doc.querySelectorAll(".timeline__marker")[1] as HTMLButtonElement).click();
+    expect(state.get()).toEqual({ mode: "project", projectId: "2026-11-20" });
+    expect(imageView().open).toBe(false); // no stale overlay
+    expect(doc.getElementById("project-date")?.textContent).toBe("Nov 20, 2026");
+    expect(
+      doc.querySelector('.timeline__item[data-project-id="2026-11-20"]')?.hasAttribute("data-active"),
+    ).toBe(true);
+    // The new project's mosaic replaced the old one — exactly one region.
+    expect(doc.querySelectorAll("#mosaic")).toHaveLength(1);
+    expect(doc.querySelectorAll("#mosaic .mosaic__frame")).toHaveLength(2); // b.png, c.png
+    expect(doc.body.dataset.mode).toBe("project");
+  });
+
+  it("a close event after the state moved on is a no-op, not a conflict", () => {
+    const { state } = setup();
+    (doc.querySelector(".timeline__marker") as HTMLButtonElement).click();
+    openFirstImage(state);
+    state.closeProject(); // dialog closes via the viewer subscription...
+    // ...and its own close event then fires; the state must stay overview.
+    expect(state.get()).toEqual({ mode: "overview" });
+    expect(imageView().open).toBe(false);
+  });
+
+  it("repeated open/close cycles leave exactly one of everything", () => {
+    const { state } = setup();
+    const marker = doc.querySelector(".timeline__marker") as HTMLButtonElement;
+    marker.focus();
+    marker.click();
+    for (let cycle = 0; cycle < 3; cycle += 1) {
+      openFirstImage(state);
+      (imageView().querySelector(".viewer__close") as HTMLButtonElement).click();
+      expect(state.get()).toEqual({ mode: "project", projectId: "2026-12-03" });
+    }
+    state.closeProject();
+    expect(state.get()).toEqual({ mode: "overview" });
+    expect(doc.querySelectorAll("#project-detail")).toHaveLength(1);
+    expect(doc.querySelectorAll(".timeline__item[data-active]")).toHaveLength(0);
+    expect(doc.querySelectorAll("dialog[open]")).toHaveLength(0);
+  });
+
+  it("a text fetch that resolves after the viewer closed never errors or reopens", async () => {
+    let resolveFetch: (text: string) => void = () => {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveFetch = (text: string) =>
+              resolve({ ok: true, status: 200, text: async () => text } as unknown as Response);
+          }),
+      ),
+    );
+    const { state } = setup();
+    (doc.querySelector(".timeline__marker") as HTMLButtonElement).click();
+    (doc.querySelector('button[aria-label="Open text file notes.txt"]') as HTMLButtonElement).click();
+    expect(textView().open).toBe(true);
+    expect(doc.getElementById("text-viewer-content")!.textContent).toBe("Loading…");
+
+    textView().close(); // close while the fetch is still in flight
+    expect(state.get()).toEqual({ mode: "project", projectId: "2026-12-03" });
+
+    resolveFetch("late content");
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 0)); // let the promise settle
+    expect(textView().open).toBe(false); // closed and staying closed
+    expect(state.get()).toEqual({ mode: "project", projectId: "2026-12-03" });
+  });
+});

@@ -1,5 +1,6 @@
 import type { Project } from "../data/types.ts";
 import type { ViewStateManager } from "../services/view-state.ts";
+import { bindViewerDismissal, dismissViewer } from "./ViewerDialog.ts";
 
 /**
  * Image viewer (TASK-029, Section 6.6): a modal dialog driven by the
@@ -7,9 +8,9 @@ import type { ViewStateManager } from "../services/view-state.ts";
  * selected asset and shows it modally (background becomes inert);
  * closing routes through `closeOverlay` back to the project detail.
  *
- * The dialog's own `close` event is the single source of truth for
- * dismissal — Escape and the close button both land there — so state
- * and DOM can never disagree.
+ * Dismissal wiring (Escape, close button, backdrop) is the shared
+ * ViewerDialog coordination (TASK-031): the dialog's `close` event is
+ * the single source of truth, so state and DOM can never disagree.
  */
 
 export function initImageViewer(
@@ -73,23 +74,9 @@ export function initImageViewer(
     }
   };
 
-  const dismiss = (): void => {
-    if (dialog.open) dialog.close(); // the close event below syncs the state
-  };
+  const dismiss = (): void => dismissViewer(dialog);
 
-  // DOM → state: any dialog dismissal (Escape via cancel, the close
-  // button, backdrop click) lands in the close event.
-  dialog.addEventListener("close", () => {
-    if (state.get().mode === "image") state.closeOverlay();
-  });
-
-  // Clicking the backdrop (the dialog element itself, via ::backdrop)
-  // closes; clicking the image never does (Section 6.6).
-  dialog.addEventListener("click", (event) => {
-    if (event.target === dialog) state.closeOverlay();
-  });
-
-  closeButton?.addEventListener("click", () => state.closeOverlay());
+  bindViewerDismissal(dialog, state, "image");
 
   // Arrow keys navigate while the dialog is open (Section 6.6).
   dialog.addEventListener("keydown", (event) => {

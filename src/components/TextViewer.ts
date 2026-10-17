@@ -1,6 +1,7 @@
 import type { Project } from "../data/types.ts";
 import { formatDate } from "../utils/dates.ts";
 import type { ViewStateManager } from "../services/view-state.ts";
+import { bindViewerDismissal, dismissViewer } from "./ViewerDialog.ts";
 
 /**
  * Text viewer (TASK-030, Section 6.7): a modal dialog driven by the
@@ -87,21 +88,10 @@ export function initTextViewer(
     }
   };
 
-  const dismiss = (): void => {
-    if (dialog.open) dialog.close(); // the close event below syncs the state
-  };
+  const dismiss = (): void => dismissViewer(dialog);
 
-  // DOM → state: any dismissal (Escape, close button, backdrop click)
-  // lands in the close event (mirrors ImageViewer, TASK-031 unifies).
-  dialog.addEventListener("close", () => {
-    if (state.get().mode === "text") state.closeOverlay();
-  });
-
-  dialog.addEventListener("click", (event) => {
-    if (event.target === dialog) state.closeOverlay();
-  });
-
-  closeButton?.addEventListener("click", () => state.closeOverlay());
+  // Dismissal wiring is the shared ViewerDialog coordination (TASK-031).
+  bindViewerDismissal(dialog, state, "text");
 
   const unsubscribe = state.subscribe((next, previous) => {
     if (next.mode === "text") {

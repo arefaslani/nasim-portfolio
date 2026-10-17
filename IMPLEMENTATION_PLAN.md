@@ -1470,11 +1470,16 @@ The plan must be committed to version control alongside implementation changes.
 - Prevent transitions from leaving the page in an inconsistent state.
 
 **Acceptance criteria:**
-- [ ] Viewer states cannot conflict.
-- [ ] Closing an overlay returns to project detail when appropriate.
-- [ ] Closing project detail restores the overview.
-- [ ] Background scrolling is correctly restored.
-- [ ] Interrupted transitions remain safe.
+- [x] Viewer states cannot conflict. — The single `ViewState` union (TASK-023) leaves no room for two simultaneous modes; the shared dialog wiring (`src/components/ViewerDialog.ts`) syncs each dialog through its `close` event, and a close event arriving after the state moved on is a verified no-op. Unit tests prove switching image↔text replaces the open dialog rather than stacking; the browser check confirmed the modal's inert background blocks pointer clicks on the timeline, so a second viewer can never be triggered from behind an open one.
+- [x] Closing an overlay returns to project detail when appropriate. — `closeOverlay` routes viewer→detail for both viewers; the region, date, and mosaic stay intact, no document re-scroll occurs (viewer↔detail never crosses the overview boundary), and focus returns to the opening tile (unit- and browser-verified for Escape and the close button).
+- [x] Closing project detail restores the overview. — `closeProject` from a viewer dismisses the overlay (no orphaned dialog), hides the detail region, restores focus to the opening marker rather than the tile, and issues exactly one restore scroll (unit-tested with a scroll spy; browser-verified).
+- [x] Background scrolling is correctly restored. — The `body:has(dialog[open]) { overflow: hidden }` lock (overlays.css) is declarative and self-releasing: verified in headless Chromium that the page cannot scroll while either viewer is open and scrolls normally again immediately after close, with computed `overflow` flipping `hidden`→`auto`/default.
+- [x] Interrupted transitions remain safe. — Unit tests cover rapid open/close cycles (exactly one region, no dialog left open), a text fetch resolving after the viewer closed (dialog stays closed, state unchanged, no error), and close-event-after-closeProject; repeated close-button clicks remain state no-ops (TASK-026). Browser-verified with three rapid Escape cycles and no console errors.
+
+**Implementation notes (TASK-031):**
+- `src/components/ViewerDialog.ts` unifies the dismissal wiring duplicated by TASK-029/030 (`bindViewerDismissal` wires close event/backdrop/close button to the state model; `dismissViewer` closes safely) — the dialog's `close` event remains the single source of truth, so state and DOM cannot disagree.
+- Real-browser finding (expected behavior, kept): with a viewer open, `showModal()`'s inert background blocks all pointer interaction with the timeline, so "switch project from a viewer" is only reachable through the state model (unit-tested) — real pointer users must close the viewer first. Marker-to-marker switching after closing resolves cleanly.
+- New `tests/unit/coordination.spec.ts` wires the full main.ts stack (detail region, both viewers, gallery, choreography with a scroll spy) and exercises the nested-state seams. 211/211 tests pass, `tsc --noEmit` clean; headless-Chromium pass over the real build: 22/22 checks, no console errors.
 
 ## Phase 7 — Responsive behavior and accessibility
 
