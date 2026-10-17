@@ -1283,10 +1283,15 @@ The plan must be committed to version control alongside implementation changes.
 - Prevent conflicting overlay states.
 
 **Acceptance criteria:**
-- [ ] Only one application view state is active at a time.
-- [ ] Opening and closing transitions are deterministic.
-- [ ] Changing projects does not leave stale UI behind.
-- [ ] Invalid project IDs are handled safely.
+- [x] Only one application view state is active at a time. — `src/services/view-state.ts` implements the single `ViewState` union from Section 6.10 (overview / project / image / text, viewer modes carrying their active project). There is no boolean flag anywhere; every change replaces the whole state.
+- [x] Opening and closing transitions are deterministic. — Guarded transitions (`openProject`, `closeProject`, `openImage`, `openText`, `closeOverlay`) either replace the state or are a no-op returning `false`; structurally equal states never re-notify. The full transition matrix is pinned by unit tests.
+- [x] Changing projects does not leave stale UI behind. — `openProject` is valid from any mode: selecting another marker while a viewer is open replaces the entire state with the new project's detail (Section 6.4's direct switch), so no overlay or gallery survives. Unit-tested.
+- [x] Invalid project IDs are handled safely. — The manager is constructed with the manifest's project ids; unknown, empty, or malformed ids are no-ops returning `false` (no throw, no state change, no notification). Unit-tested with junk inputs.
+
+**Implementation notes (TASK-023):**
+- The model is pure — no DOM, no fetches — so UI wiring (TASK-024+) subscribes and drives transitions and focus management from the `(next, previous)` diff. That wiring is where asset existence is checked (the model validates ids and shapes only).
+- `openImage`/`openText` are restricted to the *currently active* project so a viewer can never disagree with the displayed detail state; `openProject` is intentionally allowed from viewer modes to honor Section 6.4's direct-switch rule.
+- `closeOverlay` (viewer → its project's detail) and `closeProject` (any → overview) are separate transitions so the detail close button (TASK-026) and viewer close buttons (TASK-029/030) have distinct, composable semantics.
 
 ### TASK-024 — Open a project from a timeline marker
 
