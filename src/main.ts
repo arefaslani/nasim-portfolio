@@ -1,4 +1,5 @@
 import { renderIntro } from "./components/Intro.ts";
+import { renderTimeline } from "./components/Timeline.ts";
 import { loadAppData } from "./services/project-data.ts";
 
 /**
@@ -11,4 +12,9 @@ if (appData === null) {
   console.warn("nasim-portfolio: no embedded app data found.");
 } else {
   renderIntro(document, appData.profile);
+  // Project selection arrives with the state model (TASK-023); for now
+  // selection is recorded so the timeline is exercisable.
+  renderTimeline(document, appData.manifest, (projectId) => {
+    console.info(`nasim-portfolio: project selected: ${projectId}`);
+  });
 }

@@ -1179,11 +1179,11 @@ The plan must be committed to version control alongside implementation changes.
 - Ensure stable project identity.
 
 **Acceptance criteria:**
-- [ ] Every eligible manifest entry produces one marker.
-- [ ] Markers appear newest first.
-- [ ] Dates use the folder date.
-- [ ] Active state is visually distinct.
-- [ ] Broken featured images have a graceful fallback.
+- [x] Every eligible manifest entry produces one marker. — One `<li>` per project, verified by unit tests including the no-duplicates re-render case.
+- [x] Markers appear newest first. — Manifest order (newest first from discovery) is preserved; date labels come from the folder date via `Intl.DateTimeFormat` with an ISO fallback for impossible dates.
+- [x] Dates use the folder date. — `src/utils/dates.ts` formats only the ISO folder date, never file metadata.
+- [x] Active state is visually distinct. — `setActiveMarker` toggles `data-active` (accent ring + label color); exactly one active at a time; unknown IDs clear safely.
+- [x] Broken featured images have a graceful fallback. — Image `error` handler switches the item to a dashed placeholder circle (`timeline__item--image-failed`); unit-tested.
 
 ### TASK-019 — Center the newest project on initial load
 

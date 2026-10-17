@@ -1,0 +1,106 @@
+/*
+ * Timeline (TASK-018): horizontal on desktop, markers sitting on a
+ * continuous line. Vertical orientation is TASK-032. The container
+ * scrolls horizontally; the page itself never does.
+ */
+
+#timeline-region {
+  max-width: none;
+  padding-block: var(--space-8) var(--space-12);
+}
+
+.timeline {
+  --timeline-marker-size: 6rem;
+
+  display: flex;
+  gap: var(--space-12);
+  list-style: none;
+  margin: 0;
+  padding: var(--space-4) var(--page-gutter) var(--space-4);
+  width: max-content;
+  min-width: 100%;
+  overflow-x: auto;
+  position: relative;
+  /* Native scrollbar hidden deliberately (Section 6.2); drag and wheel
+     navigation arrive in TASK-020/021, keyboard access is via markers. */
+  scrollbar-width: none;
+}
+
+.timeline::-webkit-scrollbar {
+  display: none;
+}
+
+/* The continuous line: a single rule behind the markers. */
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--space-4) + var(--timeline-marker-size) / 2);
+  height: var(--border-width);
+  background: var(--color-border-strong);
+}
+
+.timeline__item {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.timeline__marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  padding-top: var(--space-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.timeline__image {
+  width: var(--timeline-marker-size);
+  height: var(--timeline-marker-size);
+  object-fit: cover;
+  border-radius: 50%;
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  transition: border-color var(--transition-fast) var(--ease-out);
+}
+
+.timeline__marker:hover .timeline__image {
+  border-color: var(--color-border-strong);
+}
+
+.timeline__date {
+  font-size: var(--text-size-xs);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+/* Active marker (Section 6.4). */
+.timeline__item[data-active] .timeline__image {
+  border: 2px solid var(--color-accent);
+  box-shadow: var(--shadow-subtle);
+}
+
+.timeline__item[data-active] .timeline__date {
+  color: var(--color-accent);
+}
+
+/* Broken featured image: a quiet placeholder, never a broken-image icon. */
+.timeline__item--image-failed .timeline__image {
+  visibility: hidden;
+}
+
+.timeline__item--image-failed::before {
+  content: "";
+  position: absolute;
+  top: var(--space-2);
+  width: var(--timeline-marker-size);
+  height: var(--timeline-marker-size);
+  border-radius: 50%;
+  border: var(--border-width) dashed var(--color-border-strong);
+  background: var(--color-surface);
+}
