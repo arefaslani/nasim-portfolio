@@ -127,7 +127,7 @@ const finalHtml = htmlTemplate
   .replaceAll("{{PAGE_TITLE}}", () => escapeHtml(profile.name))
   .replaceAll("{{PAGE_DESCRIPTION}}", () => escapeHtml(profile.headline))
   .replaceAll("{{BASE_PATH}}", () => basePath)
-  .replaceAll("{{MANIFEST_JSON}}", () => safeJsonForHtml(manifest))
+  .replaceAll("{{APP_DATA_JSON}}", () => safeJsonForHtml({ manifest, profile }))
   .replaceAll("{{INLINE_CSS}}", () => bundledCss)
   .replaceAll("{{INLINE_JS}}", () => bundledJs);
 

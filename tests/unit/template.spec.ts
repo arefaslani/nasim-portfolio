@@ -52,9 +52,10 @@ describe("index.template.html", () => {
     }
   });
 
-  it("keeps the manifest in a non-executable JSON script element", () => {
+  it("keeps the app data in a non-executable JSON script element", () => {
     expect(template).toContain('<script id="app-data" type="application/json">');
-    expect(template).toContain("{{MANIFEST_JSON}}");
+    expect(template).toContain("{{APP_DATA_JSON}}");
+    expect(template).not.toContain("{{MANIFEST_JSON}}");
   });
 
   it("does not assume deployment at / (base-path token present)", () => {

@@ -10,7 +10,7 @@
       {{PAGE_TITLE}}       page title, from profile name
       {{PAGE_DESCRIPTION}} meta description
       {{BASE_PATH}}        deployment base path, "" or "/repo" (Section 5.4)
-      {{MANIFEST_JSON}}    safe-serialized project manifest (safeJsonForHtml)
+      {{APP_DATA_JSON}}    safe-serialized { manifest, profile }
       {{INLINE_CSS}}       bundled stylesheet
       {{INLINE_JS}}        bundled application code
     The <base> element resolves all site-relative asset URLs in the
@@ -75,9 +75,9 @@
     <pre id="text-viewer-content"></pre>
   </dialog>
 
-  <!-- Application data, embedded safely by the build. Read via
-       JSON.parse of #app-data's textContent. -->
-  <script id="app-data" type="application/json">{{MANIFEST_JSON}}</script>
+  <!-- Application data, embedded safely by the build (manifest +
+       profile). Read via JSON.parse of #app-data's textContent. -->
+  <script id="app-data" type="application/json">{{APP_DATA_JSON}}</script>
   <script>
     {{INLINE_JS}}
   </script>

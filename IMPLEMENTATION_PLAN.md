@@ -1156,10 +1156,14 @@ The plan must be committed to version control alongside implementation changes.
 - Provide suitable image alternative text.
 
 **Acceptance criteria:**
-- [ ] Profile content comes from configuration.
-- [ ] The image and text adapt to mobile.
-- [ ] The introduction has no hardcoded project data.
-- [ ] Its visibility can be controlled by application state.
+- [x] Profile content comes from configuration. — `src/components/Intro.ts` renders from the embedded profile (build embeds `{ manifest, profile }` into `#app-data` via `safeJsonForHtml`); `src/services/project-data.ts` parses it null-safely.
+- [x] The image and text adapt to mobile. — Photo + text side-by-side on desktop, stacked below 640px; fluid photo size with `clamp()`.
+- [x] The introduction has no hardcoded project data. — Everything renders from `content/profile.json`; nothing else is referenced.
+- [x] Its visibility can be controlled by application state. — `setIntroHidden(doc, hidden)` toggles `data-hidden` with a token-driven transition (full choreography in TASK-025).
+
+**Implementation notes (TASK-017):**
+- The template's `{{MANIFEST_JSON}}` token became `{{APP_DATA_JSON}}` carrying `{ manifest, profile }` in the single `#app-data` JSON slot.
+- All profile text renders via `textContent` (Section 8.1).
 
 ## Phase 4 — Timeline
 
