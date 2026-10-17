@@ -1218,6 +1218,10 @@ The plan must be committed to version control alongside implementation changes.
 - [x] Page scrolling remains usable. — At the timeline's scroll edges the gesture is handed back to the page (not consumed); outside the timeline the listener never fires.
 - [x] Nested text and modal scrolling are not hijacked. — The listener is bound only to the timeline container and returns a cleanup function; viewers (TASK-029/030) are separate overlays and never under this listener.
 
+**Implementation notes (TASK-020):**
+- Correction found by real-browser testing (headless Chromium): wheel navigation initially had no effect because of two CSS bugs, not the wheel handler — (1) flex-column children with `margin-inline: auto` shrink-to-fit their content, so the timeline region grew to the content width and the page silently clipped it (fixed with `width: 100%` in the shell rule, TASK-016's layout); (2) `.timeline` had `width: max-content` without a cap, so the scroll container never had overflowing content (fixed with `max-width: 100%`).
+- Verified with Playwright (installed as a devDependency for TASK-037): wheel over timeline scrolls it, native deltaX untouched, edge gestures hand back to the page.
+
 ### TASK-021 — Implement mouse drag scrolling
 
 **Dependencies:** TASK-020

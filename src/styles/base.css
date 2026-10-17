@@ -18,12 +18,14 @@ html {
 }
 
 /* Page shell: centered editorial column with responsive gutters.
-   The timeline may extend beyond this column, so the shell only clips
-   its own children. */
+   width: 100% is required because these are flex-column children —
+   auto margins alone would shrink them to content width, which breaks
+   any content wider than the viewport (e.g. the scrolling timeline). */
 .page-shell,
 main,
 header,
 nav {
+  width: 100%;
   max-width: var(--page-max-width);
   margin-inline: auto;
   padding-inline: var(--page-gutter);
