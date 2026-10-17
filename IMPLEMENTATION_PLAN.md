@@ -1139,10 +1139,10 @@ The plan must be committed to version control alongside implementation changes.
 - Define baseline loading and empty states.
 
 **Acceptance criteria:**
-- [ ] The page shell renders at desktop and mobile sizes.
-- [ ] Semantic landmarks are present.
-- [ ] No unnecessary horizontal overflow occurs.
-- [ ] Empty-state styling is available.
+- [x] The page shell renders at desktop and mobile sizes. — Centered shell with `--page-max-width` and fluid `--page-gutter` gutters; flex column layout for header/main/nav stacking; verified in the built output (pixel review is TASK-038's visual pass).
+- [x] Semantic landmarks are present. — `header` (intro), `main` (content), `nav` (timeline) from the TASK-011 template, now laid out as page regions.
+- [x] No unnecessary horizontal overflow occurs. — `overflow-x: hidden` on body as a guard plus constrained column layout; explicit per-component overflow checks come with the timeline/mosaic tasks.
+- [x] Empty-state styling is available. — Designed quiet empty state (`#empty-state`) using display type and muted ink.
 
 ### TASK-017 — Implement the introduction component
 
