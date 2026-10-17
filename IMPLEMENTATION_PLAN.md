@@ -1424,11 +1424,16 @@ The plan must be committed to version control alongside implementation changes.
 - Handle load failures.
 
 **Acceptance criteria:**
-- [ ] Every image tile opens the correct image.
-- [ ] The image fits the viewport without distortion.
-- [ ] The viewer can be closed using the button and Escape.
-- [ ] Clicking the image does not accidentally close it.
-- [ ] Focus is restored after closing.
+- [x] Every image tile opens the correct image. — `src/components/ImageViewer.ts` populates the modal dialog from the state's `image` mode (project + asset index); browser-verified that the tile click opens the matching `src` with honest `alt` text.
+- [x] The image fits the viewport without distortion. — `max-width: calc(100vw - gutters)` / `max-height: 85vh` with auto dimensions preserves the aspect ratio; verified with a 1600×1000 test image rendering at 1224×765 (ratio intact).
+- [x] The viewer can be closed using the button and Escape. — Escape and the close button both land in the dialog's `close` event, which syncs the state model (`closeOverlay` → project detail); backdrop click closes as well; clicking the image never closes (unit- and browser-tested).
+- [x] Clicking the image does not accidentally close it. — Only clicks whose target is the dialog element (the backdrop) close the viewer; image clicks are ignored.
+- [x] Focus is restored after closing. — Focus returns to the opening tile on `closeOverlay`. Root-caused in Chromium: the detail region's project-mode handler used to re-render the mosaic (detaching the opener tile, so the restore silently failed); returning from the same project's viewer now skips the re-render and the restore works — browser-verified for both Escape and the close button.
+
+**Implementation notes (TASK-029):**
+- Left/right arrow keys and the nav buttons cycle the project's image assets (wrapping); a single-image project disables the controls.
+- A failed image load swaps the dialog content for a labeled fallback panel; the viewer remains fully closable (verified).
+- Background scrolling is prevented by the modal dialog's inertness plus a `body:has(dialog[open])` overflow lock (overlays.css).
 
 ### TASK-030 — Implement the text viewer
 
@@ -1443,11 +1448,15 @@ The plan must be committed to version control alongside implementation changes.
 - Render content as plain text or sanitized Markdown.
 
 **Acceptance criteria:**
-- [ ] Clicking a text tile opens the correct file.
-- [ ] Text is readable on desktop and mobile.
-- [ ] HTML-like text is never executed.
-- [ ] Loading and fetch errors are handled.
-- [ ] The viewer can be closed using the button and Escape.
+- [x] Clicking a text tile opens the correct file. — `src/components/TextViewer.ts` fetches the state's `assetPath` on demand; verified in the browser (`data-model.txt` loads with the right title).
+- [x] Text is readable on desktop and mobile. — The dialog is a 52rem-max surface with `--text-size-sm` mono content, `line-height: body`, scrolling inside a 70vh `pre` (Sections 6.7 and 7); the dialog width uses `min(90vw, 52rem)` so narrow screens fit.
+- [x] HTML-like text is never executed. — Content renders via `textContent` only (Section 8.1); unit-tested with a `<script>` payload (zero child elements, no script nodes in the viewer) and browser-verified with `draft.md` containing a script tag.
+- [x] Loading and fetch errors are handled. — A "Loading…" state renders synchronously on open; failures show a styled error message and the viewer remains closable; a stale fetch can never overwrite a newer document (load-token guard, unit-tested).
+- [x] The viewer can be closed using the button and Escape. — Same single-path dialog `close`-event sync as the image viewer; focus returns to the opening text tile (unit- and browser-tested).
+
+**Implementation notes (TASK-030):**
+- Markdown renders as plain text in the first release (Section 4.3's simplest option); no sanitizing renderer is needed because nothing is ever parsed as HTML.
+- Fetches are memoized per session (including failures), so reopening the same document does not refetch it (Section 6.7) — unit-tested with a mocked fetch.
 
 ### TASK-031 — Implement overlay and transition coordination
 

@@ -1,4 +1,6 @@
 import { createHoverCard, enableHoverCards } from "./components/HoverCard.ts";
+import { initImageViewer } from "./components/ImageViewer.ts";
+import { initTextViewer } from "./components/TextViewer.ts";
 import { initProjectDetail } from "./components/ProjectDetail.ts";
 import { renderIntro } from "./components/Intro.ts";
 import {
@@ -31,6 +33,12 @@ if (appData === null) {
   // Project selection: markers open projects through the state model;
   // the subscription updates markers, the detail region, and overlays.
   initProjectDetail(document, state, appData.manifest.projects, hoverCard);
+
+  // Viewers (TASK-029/030): modal dialogs driven by the image/text
+  // states. Subscribed after the detail region so its focus handling
+  // runs first on shared transitions.
+  initImageViewer(document, state, appData.manifest.projects);
+  initTextViewer(document, state, appData.manifest.projects);
 
   // Overview ↔ detail choreography (TASK-025): body data-mode, intro
   // recede, and the coordinated document scroll, all from state diffs.
