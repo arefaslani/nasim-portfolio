@@ -1,4 +1,5 @@
 import { renderIntro } from "./components/Intro.ts";
+import { createHoverCard, enableHoverCards } from "./components/HoverCard.ts";
 import {
   centerNewest,
   enableDragScrolling,
@@ -30,5 +31,11 @@ if (appData === null) {
   if (scroller !== null) {
     enableWheelNavigation(scroller);
     enableDragScrolling(scroller);
+    // Custom hover cards (TASK-022): one shared card outside the
+    // scroller so the overflow container can never clip it.
+    const card = createHoverCard(document);
+    enableHoverCards(scroller, card, (projectId) =>
+      appData.manifest.projects.find((project) => project.id === projectId),
+    );
   }
 }

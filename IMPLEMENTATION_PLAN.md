@@ -1255,11 +1255,19 @@ The plan must be committed to version control alongside implementation changes.
 - Disable hover-only expectations on touchscreens.
 
 **Acceptance criteria:**
-- [ ] The card is custom-styled, not a native tooltip.
-- [ ] Correct text appears for each project.
-- [ ] The card does not obstruct essential controls.
-- [ ] Keyboard users receive equivalent project information.
-- [ ] Reduced-motion settings are respected.
+- [x] The card is custom-styled, not a native tooltip. — `src/components/HoverCard.ts` renders one shared `#timeline-hover-card` element (surface, border, radius, raised shadow from the design tokens) styled in `src/styles/hover-card.css`; no `title` attribute is used anywhere.
+- [x] Correct text appears for each project. — The card shows the featured-image preview, the folder date (`formatDate`), and the trimmed `0.txt` description of the hovered marker, set via `textContent` (Section 8.1). Unit-tested per project; real-browser check confirmed the text switches as the pointer moves between markers.
+- [x] The card does not obstruct essential controls. — The card is `pointer-events: none` at all times (it is purely informational), so it can never intercept wheel, drag, or click events aimed at the timeline; it also hides on pointer press, Escape, leave, and repositions on scroll/resize. Verified in headless Chromium: drag scrolling and clicks work with the card visible.
+- [x] Keyboard users receive equivalent project information. — Marker focus (`focusin`) shows the same card; blur and Escape hide it. Screen readers get the same information from the markers' existing `aria-label`; the card is `aria-hidden` to avoid double announcement.
+- [x] Reduced-motion settings are respected. — The entrance/exit transition exists only inside `@media (prefers-reduced-motion: no-preference)` (tokens.css convention); base.css's global guard is the second line of defense. Verified: computed transition duration is 0.01ms under emulated reduced motion while the card still appears.
+
+**Implementation notes (TASK-022):**
+- The card lives outside the timeline scroller (appended to `<body>`), positioned with `position: fixed` from the marker's `getBoundingClientRect()`, so the scroller's `overflow-x: auto` can never clip it (Section 6.2/6.3). Placement prefers below the marker, flips above on bottom overflow, and clamps horizontally to a 12px viewport gutter (`computeCardPosition`, unit-tested).
+- Scroll/resize re-positions the card when a marker is anchored (the browser's focus scroll-into-view must not make the card flicker or go stale); with no anchor (pointer press/drag) the card hides instead.
+- A mouse press on a marker focuses it, which would otherwise re-show the card mid-drag; a press therefore suppresses show until release (mirrors the TASK-021 window-release pattern).
+- Touch and pen pointers never trigger the card (`pointerType` check); touch users tap markers directly, so hover is never required (Section 6.3).
+- When a project is activated (TASK-024), opening the detail state should call `hideHoverCard` so the card does not linger over the mosaic.
+- Real-browser (headless Chromium) verification: card renders outside the scroller un-clipped, inside the viewport, with correct per-project text; hides on leave/Escape/press; follows anchored scrolls; no console errors; reduced-motion honored.
 
 ## Phase 5 — Project navigation and detail layout
 
