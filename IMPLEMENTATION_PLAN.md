@@ -984,7 +984,7 @@ The plan must be committed to version control alongside implementation changes.
 - [x] No local absolute paths are exposed. — `toDeployedPath` builds site-relative paths (`projects/<date>/<file>`); tests assert no `/Users/` or `..` in output.
 - [x] No manifest path escapes the allowed project directory. — `assertNoTraversal` rejects `..`, `.`, empty segments, and absolute paths; unit-tested.
 - [x] Serialization cannot introduce executable HTML through project text. — `safeJsonForHtml` escapes `<`, `>`, `&`, U+2028/2029; tests prove `</script>` payloads cannot close the containing element and content round-trips through `JSON.parse`.
-- [ ] Integration tests pass. — Deferred: integration tests are built with the fixture suite in TASK-009 and the pipeline in TASK-012/TASK-036. Unit-level coverage is complete.
+- [x] Integration tests pass. — Integration tests over discovery + manifest generation now exist (TASK-009) and pass; full build-pipeline integration tests follow in TASK-012/TASK-036.
 
 **Implementation notes (TASK-008):**
 - Discovery now keeps the full file name on each asset (extension included) so paths, MIME types, and future tile labels derive from one value.
@@ -1003,9 +1003,10 @@ The plan must be committed to version control alongside implementation changes.
 - Avoid depending on real personal portfolio content.
 
 **Acceptance criteria:**
-- [ ] Tests can run without changing real project folders.
-- [ ] Fixtures cover all required validation scenarios.
-- [ ] Fixture setup and cleanup are reliable.
+- [x] Tests can run without changing real project folders. — Fixtures live in `tests/fixtures/projects/` and are committed; discovery reads them via the real filesystem, never `projects/`.
+- [x] Fixtures cover all required validation scenarios. — Three valid projects (image-heavy, single-asset, text-heavy with an XSS payload in `0.txt`), plus invalid-date, missing-`0.txt`, empty-`0.txt`, and ambiguous-featured-image folders, a hidden file, and an unsupported `.zip`.
+- [x] Fixture setup and cleanup are reliable. — Fixtures are static, version-controlled files; no setup/cleanup logic, no mutation during tests.
+- [x] Integration tests pass. — 10 integration tests in `tests/integration/discovery.integration.spec.ts`: ordering, asset classification, exclusions, all error/warning diagnostics, manifest schema and paths, safe embedding round-trip, and reference resolution against real fixture files. 56/56 tests pass, `tsc --noEmit` clean.
 
 ## Phase 2 — Build and deployment
 
