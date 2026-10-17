@@ -3,8 +3,9 @@
 // and copy project assets and the profile image.
 //
 // Usage: node scripts/build.mjs [--root <repoRoot>] [--out <distDir>] [--base <basePath>]
-// Defaults: --root is this repository, --out <root>/dist, --base "" .
-// Output is deterministic: no timestamps, fixed ordering throughout.
+// Defaults: --root is this repository, --out <root>/dist, --base "" or the
+// PORTFOLIO_BASE_PATH environment variable (Section 5.4: the deployment
+// base path, "" for a custom domain, "/repo" for a project site).
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,7 +16,7 @@ import { validateProfile, validateProfileImageResolves } from "../src/lib/profil
 
 // --- Argument parsing -------------------------------------------------------
 function parseArgs(argv) {
-  const args = { root: undefined, out: undefined, base: "" };
+  const args = { root: undefined, out: undefined, base: process.env["PORTFOLIO_BASE_PATH"] ?? "" };
   for (let i = 0; i < argv.length; i += 2) {
     const flag = argv[i];
     const value = argv[i + 1];

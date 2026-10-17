@@ -1077,10 +1077,13 @@ The plan must be committed to version control alongside implementation changes.
 - Support a root-domain deployment and a repository-subpath deployment.
 
 **Acceptance criteria:**
-- [ ] Asset URLs work at `/`.
-- [ ] Asset URLs work under a repository prefix.
-- [ ] No accidental double slashes or malformed paths occur.
-- [ ] Automated tests verify both configurations.
+- [x] Asset URLs work at `/`. — Empty base produces site-relative paths (`projects/…`, no leading slash) and `<base href="/">`; integration-tested.
+- [x] Asset URLs work under a repository prefix. — `--base /portfolio` produces `<base href="/portfolio/">` and `/portfolio/projects/…` URLs; assets still copy to the dist root (dist is the site root, the prefix is deployment-only); integration-tested.
+- [x] No accidental double slashes or malformed paths occur. — Integration tests assert no `"//` or `/portfolio//` sequences; `normalizeBasePath` rejects trailing/embedded slashes and traversal.
+- [x] Automated tests verify both configurations. — `tests/integration/basepath.integration.spec.ts` covers root, subpath, `PORTFOLIO_BASE_PATH` env var, and malformed-base rejection.
+
+**Implementation notes (TASK-013):**
+- The base path can be configured three ways: `--base` flag, `PORTFOLIO_BASE_PATH` environment variable (used by the TASK-014 workflow), or empty default.
 
 ### TASK-014 — Configure GitHub Pages deployment
 
