@@ -1604,7 +1604,7 @@ The plan must be committed to version control alongside implementation changes.
 - [ ] Desktop and mobile flows are covered.
 - [ ] Reduced-motion behavior is tested.
 
-### TASK-038 — Perform visual and accessibility review
+### TASK-038 — Perform visual and accessibility review (SKIPPED — not implemented)
 
 **Dependencies:** TASK-028, TASK-033, TASK-034, TASK-035, TASK-037
 
@@ -1615,12 +1615,7 @@ The plan must be committed to version control alongside implementation changes.
 - Perform manual keyboard testing.
 - Fix identified visual and accessibility defects.
 
-**Acceptance criteria:**
-- [ ] All specified viewports have been reviewed.
-- [ ] No critical accessibility defects remain.
-- [ ] No unintended overflow or clipping remains.
-- [ ] Active timeline and viewer states are visually clear.
-- [ ] Remaining noncritical limitations are documented.
+**Status:** Skipped at the user's explicit instruction (2026-10-17), like TASK-035/TASK-037. Note that substantial equivalent verification already exists inside other tasks: real-browser screenshot review at 1440×900 and 390×844 (TASK-028/032/033), the keyboard journey at desktop/mobile/reduced-motion (TASK-034), and per-task browser passes with no console errors. The criteria below remain unchecked because a dedicated, complete review pass was not performed.
 
 ### TASK-039 — Optimize performance and asset handling
 
