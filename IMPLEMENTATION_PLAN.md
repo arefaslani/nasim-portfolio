@@ -853,10 +853,10 @@ The plan must be committed to version control alongside implementation changes.
 - Identify existing project folders and assets.
 
 **Acceptance criteria:**
-- [ ] Repository structure is documented.
-- [ ] Existing tooling and deployment assumptions are recorded.
-- [ ] No existing content has been overwritten.
-- [ ] Any conflicts with this plan are documented.
+- [x] Repository structure is documented. — Greenfield repo: the only tracked file is `IMPLEMENTATION_PLAN.md`. No source, build, or content files exist.
+- [x] Existing tooling and deployment assumptions are recorded. — No `package.json`, no bundler config, no `.github/` workflows, no `index.html`. Remote is `git@github.com:arefaslani/nasim-portfolio.git` with a single `main` branch; local and remote are in sync at commit `e1618cd`. No GitHub Pages workflow exists yet (TASK-014 will create one).
+- [x] No existing content has been overwritten. — Nothing existed to overwrite; inspection was read-only.
+- [x] Any conflicts with this plan are documented. — None. The repository is empty, so the plan can be implemented as written.
 
 ### TASK-002 — Establish source and generated-output boundaries
 
@@ -869,10 +869,14 @@ The plan must be committed to version control alongside implementation changes.
 - Define how generated output will be excluded from source control or handled in deployment.
 
 **Acceptance criteria:**
-- [ ] Source files and generated files have distinct locations.
-- [ ] The final HTML output path is documented.
-- [ ] Project assets have a defined source and output location.
-- [ ] Generated files will not be edited manually.
+- [x] Source files and generated files have distinct locations. — Source: `src/`, `content/`, `assets/`, `projects/`, `scripts/`, `tests/`. Generated: `dist/` only. `.gitignore` excludes `dist/` and `node_modules/` from version control.
+- [x] The final HTML output path is documented. — `dist/index.html`, produced by `npm run build` (`scripts/build.mjs`).
+- [x] Project assets have a defined source and output location. — Source: `projects/<YYYY-MM-DD>/` and `assets/`; output: `dist/projects/<YYYY-MM-DD>/` and `dist/assets/`, copied by the build.
+- [x] Generated files will not be edited manually. — `dist/` is untracked and regenerated from source; per the plan, all fixes go through source files.
+
+**TASK-002 decisions (2026-10-17):**
+- `dist/` is **not** committed to version control. The GitHub Actions workflow (TASK-014) will build it in CI from a clean checkout and publish it to GitHub Pages. This avoids generated output in git and guarantees every deployment is reproducible from source.
+- `content/profile.json` is the profile configuration location, as specified in Section 3.1.
 
 ### TASK-003 — Initialize implementation tracking
 
@@ -885,10 +889,10 @@ The plan must be committed to version control alongside implementation changes.
 - Ensure the plan can be updated incrementally.
 
 **Acceptance criteria:**
-- [ ] All task IDs are unique.
-- [ ] All dependencies refer to valid task IDs.
-- [ ] The checklist is committed to version control.
-- [ ] The agent protocol is present.
+- [x] All task IDs are unique. — Verified by script: 40 unique IDs, TASK-001 through TASK-040.
+- [x] All dependencies refer to valid task IDs. — Verified by script: every `Dependencies:` reference resolves to an existing task; no self-dependencies.
+- [x] The checklist is committed to version control. — Plan and `.gitignore` committed to `main`.
+- [x] The agent protocol is present. — Section 10 defines the operating protocol; tasks use the `[ ]` / `[x]` / `BLOCKED` statuses from Section 10.5.
 
 ## Phase 1 — Build system and project discovery
 
