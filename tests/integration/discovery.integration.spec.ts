@@ -36,13 +36,13 @@ describe("discovery over committed fixtures", () => {
   it("classifies gallery assets correctly per project", () => {
     const byId = new Map(result.projects.map((p) => [p.id, p]));
     expect(byId.get("2026-12-03")?.assets.map((a) => a.name)).toEqual([
-      "01-workspace.png",
-      "02-diagram.jpg",
+      "01-workspace.webp",
+      "02-diagram.webp",
       "notes.txt",
       "retrospective.md",
     ]);
     expect(byId.get("2026-11-20")?.assets.map((a) => a.name)).toEqual([
-      "screenshot.png",
+      "screenshot.webp",
     ]);
     expect(byId.get("2025-04-17")?.assets.map((a) => a.name)).toEqual([
       "draft.md",

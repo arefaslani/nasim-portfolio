@@ -28,6 +28,11 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      # ImageMagick converts any newly added JPEG/PNG sources to WebP
+      # during the build (existing WebP-only trees need none of this).
+      - name: Install ImageMagick
+        run: sudo apt-get install -y imagemagick
+
       - name: Validate, test, and build
         run: npm run check
         env:

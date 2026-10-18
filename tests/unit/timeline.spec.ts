@@ -50,6 +50,7 @@ describe("renderTimeline", () => {
     const image = doc.querySelector(".timeline__image") as HTMLImageElement;
     expect(image.getAttribute("src")).toBe("projects/2026-12-03/0.webp");
     expect(image.getAttribute("alt")).toBe("");
+    expect(image.getAttribute("loading")).toBe("lazy");
     expect(doc.querySelector(".timeline__date")?.textContent).toBe("Dec 3, 2026");
   });
 

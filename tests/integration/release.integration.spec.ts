@@ -167,7 +167,7 @@ describe("actionable build failures", () => {
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "0.txt"), "Two featured images.");
     cpSync(join(fixturesProjects, "2026-12-03", "0.webp"), join(dir, "0.webp"));
-    cpSync(join(fixturesProjects, "2025-04-17", "0.jpeg"), join(dir, "0.jpeg"));
+    cpSync(join(fixturesProjects, "2026-11-20", "0.gif"), join(dir, "0.gif"));
     try {
       runBuild();
       throw new Error("expected the build to fail");
