@@ -96,6 +96,13 @@
   overflow-wrap: anywhere; /* long words never overflow (Section 6.5) */
 }
 
+/* A captioned frame squares its bottom corners: the caption continues
+   the frame's sides and itself carries the combined unit's bottom
+   rounding — no notched seam where the two meet. */
+.mosaic__tile--image:has(.mosaic__caption) .mosaic__frame {
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
 /* A failed caption degrades to a dashed frame, like failed image tiles. */
 .mosaic__caption--failed {
   border-style: dashed;
@@ -151,18 +158,17 @@
   padding: 0; /* the figcaption already carries the label padding */
 }
 
+/* Plain (.txt) content differs from markdown only in whitespace
+   handling — the body font is shared (no mono on text cards; mono
+   remains for code spans and fences below). */
 .mosaic__text--plain {
-  font-family: var(--font-mono);
-  font-size: var(--text-size-xs);
   white-space: pre-wrap; /* meaningful whitespace and line breaks */
   overflow-wrap: anywhere;
 }
 
-/* Loading and failure states: quiet and muted (mirrors the fallback). */
+/* Loading and failure states: quiet and muted. */
 .mosaic__text--loading,
 .mosaic__text--failed {
-  font-family: var(--font-mono);
-  font-size: var(--text-size-xs);
   font-style: italic;
   color: var(--color-ink-faint);
 }
