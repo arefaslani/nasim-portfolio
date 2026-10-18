@@ -53,7 +53,11 @@ function createMarker(
   image.className = "timeline__image";
   image.src = project.featuredImage;
   image.alt = ""; // decorative; the aria-label carries the meaning
-  image.loading = "eager"; // featured images are above the fold on the timeline
+  // Featured images lazy-load off-screen (Section 8.4) — the timeline
+  // renders every marker up front, so distant thumbnails defer their
+  // downloads. setAttribute so the state is observable even where the
+  // property is not reflected (matches the gallery's approach).
+  image.setAttribute("loading", "lazy");
   image.decoding = "async";
   // Graceful fallback for broken featured images (Section 6.1).
   image.addEventListener("error", () => {

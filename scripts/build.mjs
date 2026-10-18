@@ -12,6 +12,16 @@ import { fileURLToPath } from "node:url";
 import * as esbuild from "esbuild";
 import { discoverProjects } from "../src/lib/discover.ts";
 import { buildManifest, normalizeBasePath, safeJsonForHtml } from "../src/lib/manifest.ts";
+import {
+  checkCollisions,
+  detectImageTool,
+  nodeOptimizeDeps,
+  nodeTextDeps,
+  planProfileConversion,
+  planProjectConversions,
+  rewriteProfileImage,
+  runConversions,
+} from "../src/lib/optimize-images.ts";
 import { validateProfile, validateProfileImageResolves } from "../src/lib/profile.ts";
 
 // --- Argument parsing -------------------------------------------------------
@@ -71,11 +81,56 @@ const reader = {
   readTextFile: (path) => readFileSync(path, "utf8"),
 };
 
-const discovered = discoverProjects(reader, join(root, "projects"));
-const warnings = discovered.warnings.map((issue) => issue.message);
-const errors = discovered.errors.map((issue) => issue.message);
+// The first pass validates everything; the conversion step below only
+// runs once it is error-free, so invalid content fails the build before
+// any file is mutated.
+const firstPass = discoverProjects(reader, join(root, "projects"));
+const warnings = firstPass.warnings.map((issue) => issue.message);
+const errors = firstPass.errors.map((issue) => issue.message);
 if (errors.length > 0) fail(errors);
 for (const message of warnings) console.warn(`build warning: ${message}`);
+
+// --- 2b. Image optimization (jpg/jpeg/png → WebP) ---------------------------
+// Converts convertible project images and the profile photo in place,
+// moving the originals into original-images/ (a gitignored local archive
+// — the manifest is the dist allowlist, so originals can never deploy).
+// The tree is then re-discovered so the manifest references the .webp
+// files through the normal validation path. Trees with nothing to convert
+// (already WebP, fixtures) take the fast path: no ImageMagick needed.
+const archiveRoot = join(root, "original-images");
+const conversionPlan = planProjectConversions(firstPass.projects, join(root, "projects"), archiveRoot);
+const profileConversion = planProfileConversion(profile.image, root, archiveRoot);
+if (profileConversion !== null) conversionPlan.push(profileConversion);
+
+if (conversionPlan.length > 0) {
+  const tool = detectImageTool();
+  if (tool === null) {
+    fail([
+      "Image conversion is required (JPEG/PNG sources found) but ImageMagick was not found on PATH.",
+      "Install it and rebuild: brew install imagemagick (macOS) or sudo apt-get install -y imagemagick (Ubuntu).",
+    ]);
+  }
+  const collisions = checkCollisions(conversionPlan, { exists: existsSync });
+  if (collisions.length > 0) fail(collisions);
+  runConversions(conversionPlan, tool, nodeOptimizeDeps);
+  if (profileConversion !== null) {
+    profile.image = rewriteProfileImage(join(root, "content", "profile.json"), profile.image, nodeTextDeps);
+    const imageErrors = validateProfileImageResolves(profile, (p) => existsSync(p), root);
+    if (imageErrors.length > 0) fail(imageErrors);
+  }
+  console.log(
+    `build: converted ${conversionPlan.length} image(s) to WebP (originals archived under original-images/).`,
+  );
+}
+
+// Re-discover only when something was converted; warnings are unchanged
+// by conversion, so only errors are re-checked.
+const discovered = conversionPlan.length === 0
+  ? firstPass
+  : discoverProjects(reader, join(root, "projects"));
+if (conversionPlan.length > 0 && discovered.errors.length > 0) {
+  fail(discovered.errors.map((issue) => issue.message));
+}
 
 // --- 3. Manifest ------------------------------------------------------------
 let basePath;
