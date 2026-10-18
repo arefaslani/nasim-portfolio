@@ -51,7 +51,20 @@ function makeProject(date: string, extraAsset?: string): void {
 function runBuild(options: { base?: string } = {}): string {
   const args = ["scripts/build.mjs", "--root", workRoot, "--out", join(workRoot, "dist")];
   if (options.base !== undefined) args.push("--base", options.base);
-  return execFileSync("node", args, { cwd: repoRoot, encoding: "utf8" });
+  return runBuildScript(args);
+}
+
+/**
+ * Run the build in a controlled environment: CI exports
+ * PORTFOLIO_BASE_PATH for the deploy build, and without pinning it here
+ * that ambient base leaks into every build that passes no --base.
+ */
+function runBuildScript(args: string[]): string {
+  return execFileSync("node", args, {
+    cwd: repoRoot,
+    encoding: "utf8",
+    env: { ...process.env, PORTFOLIO_BASE_PATH: "" },
+  });
 }
 
 function listFiles(dir: string): string[] {
@@ -223,10 +236,7 @@ describe("clean deterministic builds", () => {
         cpSync(join(fixturesContent, "profile.webp"), join(root, "assets", "profile.webp"));
         cpSync(join(fixturesProjects, "2026-12-03"), join(root, "projects", "2026-12-03"), { recursive: true });
         cpSync(join(fixturesProjects, "2026-11-20"), join(root, "projects", "2026-11-20"), { recursive: true });
-        execFileSync("node", ["scripts/build.mjs", "--root", root, "--out", join(root, "dist")], {
-          cwd: repoRoot,
-          encoding: "utf8",
-        });
+        runBuildScript(["scripts/build.mjs", "--root", root, "--out", join(root, "dist")]);
       }
 
       const inventory = (root: string) =>
