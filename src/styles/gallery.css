@@ -85,26 +85,15 @@
   object-fit: cover;
 }
 
-.mosaic__caption,
-.mosaic__file-name {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: var(--text-size-xs);
-  color: var(--color-ink-muted);
-  overflow-wrap: anywhere; /* long filenames never overflow (Section 6.5) */
-}
-
-/* Filename label: the header of a text card (Section 4.3). */
-.mosaic__file-name {
-  padding: var(--space-2) var(--space-3);
-  border-bottom: var(--border-width) solid var(--color-border);
-}
-
+/* A caption hosts the paired text's content (TASK-041); its own
+   typography is nothing — content and state text style themselves. */
 .mosaic__caption {
+  display: block;
   padding: var(--space-2) var(--space-3);
   border: var(--border-width) solid var(--color-border);
   border-top: none; /* continues the image frame beneath it */
   border-radius: 0 0 var(--radius-md) var(--radius-md);
+  overflow-wrap: anywhere; /* long words never overflow (Section 6.5) */
 }
 
 /* A failed caption degrades to a dashed frame, like failed image tiles. */
@@ -149,8 +138,12 @@
   max-height: 28rem;
   overflow-y: auto;
   padding: var(--space-4);
+  /* Explicit body font/ink so the host's rendering never depends on
+     what its container (e.g. a figcaption) styles. */
+  font-family: var(--font-body);
   font-size: var(--text-size-sm);
   line-height: var(--line-height-body);
+  color: var(--color-ink);
 }
 
 .mosaic__caption .mosaic__text {

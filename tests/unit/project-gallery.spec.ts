@@ -209,14 +209,16 @@ describe("renderMosaic (TASK-027, text on cards TASK-041)", () => {
     expect(tiles[1]!.getAttribute("tabindex")).toBeNull();
   });
 
-  it("labels image tiles with aria-labels and text cards with filename labels", () => {
+  it("labels image tiles with aria-labels; text cards carry no filename label", () => {
     renderMosaic(doc, project([asset("image", "dashboard.png"), asset("text", "notes.txt")]), {
       onOpenImage: () => {},
     });
     const frame = doc.querySelector("#mosaic .mosaic__frame")!;
     expect(frame.getAttribute("aria-label")).toBe("Open image dashboard.png");
+    // The card shows content only — no filename header (TASK-041
+    // follow-up); the name surfaces just once, in the failure state.
     const tile = doc.querySelector("#mosaic .mosaic__tile--text")!;
-    expect(tile.querySelector(".mosaic__file-name")!.textContent).toBe("notes.txt");
+    expect(tile.querySelector(".mosaic__file-name")).toBeNull();
     expect(tile.getAttribute("aria-label")).toBeNull();
   });
 

@@ -278,15 +278,14 @@ function createTextTile(
   const article = doc.createElement("article");
   article.className = `mosaic__tile mosaic__tile--text mosaic__tile--${size}`;
 
-  // The filename labels the card (Section 4.3); the content renders
-  // beneath it, fetched lazily as the card scrolls into view.
-  const name = doc.createElement("span");
-  name.className = "mosaic__file-name";
-  name.textContent = tile.asset.name;
-
+  // The card shows the content itself — no filename header (Section
+  // 4.3 as amended for TASK-041, per user feedback). The filename
+  // surfaces only in the failure state, where it is the file's sole
+  // identification. Content is fetched lazily as the card scrolls
+  // into view.
   const body = doc.createElement("div");
   body.className = "mosaic__text";
-  article.append(name, body);
+  article.append(body);
   fetchTextWhenVisible(article, () => fillTextContent(doc, body, tile.asset));
   return article;
 }
