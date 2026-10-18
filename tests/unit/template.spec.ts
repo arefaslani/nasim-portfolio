@@ -44,12 +44,14 @@ describe("index.template.html", () => {
       "timeline",
       "image-viewer",
       "image-viewer-img",
-      "text-viewer",
-      "text-viewer-content",
       "app-data",
     ]) {
       expect(template.includes(`id="${id}"`), `missing #${id}`).toBe(true);
     }
+  });
+
+  it("carries no text viewer (removed in TASK-041; text renders on cards)", () => {
+    expect(template).not.toContain('id="text-viewer"');
   });
 
   it("keeps the app data in a non-executable JSON script element", () => {

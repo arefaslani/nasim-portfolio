@@ -56,7 +56,7 @@ describe("createViewStateManager (TASK-023)", () => {
     });
   });
 
-  describe("openImage / openText", () => {
+  describe("openImage", () => {
     it("opens a viewer only for the active project", () => {
       const state = manager();
       state.openProject("2026-12-03");
@@ -69,7 +69,6 @@ describe("createViewStateManager (TASK-023)", () => {
     it("refuses viewers while in overview", () => {
       const state = manager();
       expect(state.openImage("2026-12-03", 0)).toBe(false);
-      expect(state.openText("2026-12-03", "projects/2026-12-03/notes.txt")).toBe(false);
       expect(state.get()).toEqual({ mode: "overview" });
     });
 
@@ -81,34 +80,13 @@ describe("createViewStateManager (TASK-023)", () => {
       expect(state.openImage("2026-12-03", Number.NaN)).toBe(false);
       expect(state.get()).toEqual({ mode: "project", projectId: "2026-12-03" });
     });
-
-    it("rejects empty text paths", () => {
-      const state = manager();
-      state.openProject("2026-12-03");
-      expect(state.openText("2026-12-03", "")).toBe(false);
-      expect(state.get()).toEqual({ mode: "project", projectId: "2026-12-03" });
-    });
-
-    it("switches between viewers of the same project", () => {
-      const state = manager();
-      state.openProject("2026-12-03");
-      state.openImage("2026-12-03", 1);
-      expect(state.openText("2026-12-03", "projects/2026-12-03/notes.txt")).toBe(true);
-      expect(state.get()).toEqual({
-        mode: "text",
-        projectId: "2026-12-03",
-        assetPath: "projects/2026-12-03/notes.txt",
-      });
-      expect(state.openImage("2026-12-03", 2)).toBe(true);
-      expect(state.get()).toEqual({ mode: "image", projectId: "2026-12-03", assetIndex: 2 });
-    });
   });
 
   describe("closeOverlay", () => {
     it("returns a viewer to its project's detail state", () => {
       const state = manager();
       state.openProject("2026-11-20");
-      state.openText("2026-11-20", "projects/2026-11-20/notes.md");
+      state.openImage("2026-11-20", 0);
       expect(state.closeOverlay()).toBe(true);
       expect(state.get()).toEqual({ mode: "project", projectId: "2026-11-20" });
     });
@@ -129,10 +107,6 @@ describe("createViewStateManager (TASK-023)", () => {
         (s) => {
           s.openProject("2026-12-03");
           s.openImage("2026-12-03", 0);
-        },
-        (s) => {
-          s.openProject("2026-12-03");
-          s.openText("2026-12-03", "projects/2026-12-03/notes.txt");
         },
       ];
       for (const open of cases) {

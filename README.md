@@ -41,7 +41,9 @@ python3 -m http.server 8123 -d dist
    (`0.jpg`, `0.jpeg`, `0.png`, `0.webp`, `0.avif`, or `0.gif`).
 3. Add a nonempty `0.txt` with a short description.
 4. Add any other supported images (`.jpg/.jpeg/.png/.webp/.avif/.gif`) or
-   text files (`.txt`, `.md`, `.markdown`) for the gallery.
+   text files (`.txt`, `.md`, `.markdown`) for the gallery. Text renders
+   on the gallery cards: `.md`/`.markdown` formatted, `.txt` as plain
+   text.
 5. Run `npm run validate` and `npm run build`, then commit and push.
 
 No source-code changes are needed for an ordinary new project.

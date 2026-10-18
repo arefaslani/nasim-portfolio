@@ -1,16 +1,23 @@
 import type { Project, ProjectAsset } from "../data/types.ts";
+import { loadTextAsset } from "../services/text-assets.ts";
+import { isMarkdown, renderMarkdown } from "../utils/markdown.ts";
 
 /**
- * Gallery asset rendering (TASK-027, Sections 4.3 and 6.5).
+ * Gallery asset rendering (TASK-027, Sections 4.3 and 6.5; text content
+ * on cards TASK-041).
  *
- * Renders one interactive tile per eligible manifest asset into #mosaic.
- * The build already guarantees the manifest contains only supported,
- * existing assets (0.txt and the featured image excluded), so the
- * renderer's job is faithful presentation and resilience: a broken
- * image degrades its own tile, never the gallery.
+ * Renders one tile per eligible manifest asset into #mosaic. The build
+ * already guarantees the manifest contains only supported, existing
+ * assets (0.txt and the featured image excluded), so the renderer's job
+ * is faithful presentation and resilience: a broken image or a failed
+ * text fetch degrades its own tile, never the gallery.
  *
  * A text file that shares an image's basename becomes that image's
- * caption (Section 4.3) rather than a separate tile.
+ * caption (Section 4.3) rather than a separate tile. Both standalone
+ * text tiles and captions render the file's content itself — `.md`/
+ * `.markdown` formatted through the DOM-constructing renderer, other
+ * text as plain text — fetched lazily as the tile scrolls into view
+ * (Section 8.4).
  */
 
 /** One composed tile: an image (optionally with a paired text caption), or a standalone text file. */
@@ -95,14 +102,44 @@ export function groupGalleryTiles(project: Project): GalleryTile[] {
 export type GalleryHandlers = {
   /** Activated with the image asset's index within project.assets. */
   onOpenImage: (assetIndex: number) => void;
-  /** Activated with the text asset (its `path` feeds the viewer fetch). */
-  onOpenText: (asset: ProjectAsset) => void;
 };
 
 /**
+ * Lazy text fetching (TASK-041): one shared IntersectionObserver starts
+ * each tile's fetch only when the tile scrolls into view, mirroring
+ * `loading="lazy"` on images (Section 8.4). Environments without the
+ * observer (jsdom) fetch immediately.
+ */
+let textObserver: IntersectionObserver | null = null;
+const pendingTextFetches = new Map<Element, () => void>();
+
+function fetchTextWhenVisible(target: Element, start: () => void): void {
+  if (typeof IntersectionObserver === "undefined") {
+    start();
+    return;
+  }
+  if (textObserver === null) {
+    textObserver = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const pending = pendingTextFetches.get(entry.target);
+        if (pending !== undefined) {
+          pendingTextFetches.delete(entry.target);
+          textObserver?.unobserve(entry.target);
+          pending();
+        }
+      }
+    });
+  }
+  pendingTextFetches.set(target, start);
+  textObserver.observe(target);
+}
+
+/**
  * Populate #mosaic with `project`'s tiles. Clear-then-render: repeated
- * activation cannot duplicate the gallery. Tile clicks invoke the
- * handlers; the viewers themselves arrive in TASK-029/030.
+ * activation cannot duplicate the gallery, and the text observer is
+ * disconnected first so a project switch can never fire a stale fetch
+ * into a detached tile (Section 8.3).
  */
 export function renderMosaic(
   doc: Document,
@@ -111,6 +148,9 @@ export function renderMosaic(
 ): void {
   const mosaic = doc.getElementById("mosaic");
   if (mosaic === null) return;
+
+  textObserver?.disconnect();
+  pendingTextFetches.clear();
 
   let renderedImage = false; // the first image loads eagerly
   let imageOrdinal = 0;
@@ -126,8 +166,47 @@ export function renderMosaic(
       }
       const size = TEXT_SIZE_CYCLE[textOrdinal % TEXT_SIZE_CYCLE.length]!;
       textOrdinal += 1;
-      return createTextTile(doc, tile, size, handlers);
+      return createTextTile(doc, tile, size);
     }),
+  );
+}
+
+/**
+ * Fill a text host with the asset's fetched content (TASK-041): a
+ * loading state first, then either the rendered markdown or a plain
+ * text node. A failed fetch degrades only this host (Section 8.3).
+ * Every async step re-checks `host.isConnected`, so a fetch resolving
+ * after a re-render never writes into a detached tile.
+ */
+function fillTextContent(
+  doc: Document,
+  host: HTMLElement,
+  asset: ProjectAsset,
+  onFail?: () => void,
+): void {
+  host.classList.add("mosaic__text--loading");
+  host.textContent = "Loading…";
+
+  loadTextAsset(asset.path).then(
+    (text) => {
+      if (!host.isConnected) return;
+      host.classList.remove("mosaic__text--loading");
+      if (isMarkdown(asset.name)) {
+        // Cards live under the h2 date heading; markdown headings slot
+        // beneath it rather than competing with the page structure.
+        host.replaceChildren(renderMarkdown(doc, text, { headingOffset: 2 }));
+      } else {
+        host.classList.add("mosaic__text--plain");
+        host.textContent = text;
+      }
+    },
+    () => {
+      if (!host.isConnected) return;
+      host.classList.remove("mosaic__text--loading");
+      host.classList.add("mosaic__text--failed");
+      host.textContent = `${asset.name} — unavailable`;
+      onFail?.();
+    },
   );
 }
 
@@ -169,11 +248,21 @@ function createImageTile(
   frame.addEventListener("click", () => handlers.onOpenImage(tile.imageIndex));
   figure.append(frame);
 
-  if (tile.caption !== null) {
+  const captionAsset = tile.caption;
+  if (captionAsset !== null) {
+    // A paired caption renders the text file's content beneath its
+    // image (Section 4.3); only its own degradation touches the tile.
     const caption = doc.createElement("figcaption");
     caption.className = "mosaic__caption";
-    caption.textContent = tile.caption.name;
+    const body = doc.createElement("div");
+    body.className = "mosaic__text";
+    caption.append(body);
     figure.append(caption);
+    fetchTextWhenVisible(caption, () =>
+      fillTextContent(doc, body, captionAsset, () =>
+        caption.classList.add("mosaic__caption--failed"),
+      ),
+    );
   }
   return figure;
 }
@@ -182,20 +271,22 @@ function createTextTile(
   doc: Document,
   tile: Extract<GalleryTile, { kind: "text" }>,
   size: (typeof TEXT_SIZE_CYCLE)[number],
-  handlers: GalleryHandlers,
 ): HTMLElement {
-  const button = doc.createElement("button");
-  button.type = "button";
-  button.className = `mosaic__tile mosaic__tile--text mosaic__tile--${size}`;
-  button.setAttribute("aria-label", `Open text file ${tile.asset.name}`);
+  // A text tile is a reading surface, not a control (TASK-041): the
+  // content renders on the card, so there is nothing to activate —
+  // no button, no tab stop (Section 7).
+  const article = doc.createElement("article");
+  article.className = `mosaic__tile mosaic__tile--text mosaic__tile--${size}`;
 
-  // The filename labels the tile (Section 4.3). No preview is fetched
-  // here — text loads on demand in the viewer (Section 8.4).
+  // The filename labels the card (Section 4.3); the content renders
+  // beneath it, fetched lazily as the card scrolls into view.
   const name = doc.createElement("span");
   name.className = "mosaic__file-name";
   name.textContent = tile.asset.name;
 
-  button.append(name);
-  button.addEventListener("click", () => handlers.onOpenText(tile.asset));
-  return button;
+  const body = doc.createElement("div");
+  body.className = "mosaic__text";
+  article.append(name, body);
+  fetchTextWhenVisible(article, () => fillTextContent(doc, body, tile.asset));
+  return article;
 }

@@ -1,18 +1,36 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   baseName,
   groupGalleryTiles,
   renderMosaic,
 } from "../../src/components/ProjectGallery";
 import { initProjectDetail } from "../../src/components/ProjectDetail";
+import { resetTextAssetCache } from "../../src/services/text-assets";
 import { createViewStateManager } from "../../src/services/view-state";
 import type { Project, ProjectAsset } from "../../src/data/types";
 
 const doc = document;
 
+/**
+ * Text content renders on the cards (TASK-041), so every gallery test
+ * exercises real (stubbed) fetches. jsdom has no IntersectionObserver,
+ * so lazy text fetching falls back to immediate starts — the same code
+ * path the browser takes for in-view tiles. The module-level session
+ * cache persists across tests: it is reset here and every test builds
+ * assets under a unique path.
+ */
+
+let folderCounter = 0;
+
 function asset(type: "image" | "text", name: string): ProjectAsset {
-  return { type, name, path: `projects/2026-01-01/${name}`, mimeType: "image/png" };
+  folderCounter += 1;
+  return {
+    type,
+    name,
+    path: `projects/g${folderCounter}/${name}`,
+    mimeType: type === "image" ? "image/png" : "text/plain",
+  };
 }
 
 function project(assets: ProjectAsset[]): Project {
@@ -23,6 +41,30 @@ function project(assets: ProjectAsset[]): Project {
     featuredImage: "projects/2026-01-01/0.webp",
     assets,
   };
+}
+
+/** Catch-all fetch so any rendered gallery can resolve its text. */
+beforeEach(() => {
+  resetTextAssetCache();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({ ok: true, status: 200, text: async () => "default" }) as unknown as Response),
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+function stubFetch(responses: Record<string, string | Error>): void {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (path: string) => {
+      const response = responses[path];
+      if (response instanceof Error) throw response;
+      return { ok: true, status: 200, text: async () => response } as unknown as Response;
+    }),
+  );
 }
 
 describe("baseName", () => {
@@ -103,7 +145,7 @@ describe("mosaic size cycle (TASK-028)", () => {
     renderMosaic(
       doc,
       project([asset("image", "a.png"), asset("image", "b.png"), asset("image", "c.png"), asset("image", "d.png"), asset("image", "e.png"), asset("image", "f.png")]),
-      { onOpenImage: () => {}, onOpenText: () => {} },
+      { onOpenImage: () => {} },
     );
     const sizes = [...doc.querySelectorAll("#mosaic .mosaic__tile")].map((tile) =>
       [...tile.classList]
@@ -124,7 +166,7 @@ describe("mosaic size cycle (TASK-028)", () => {
     renderMosaic(
       doc,
       project([asset("text", "a.txt"), asset("text", "b.md"), asset("text", "c.txt")]),
-      { onOpenImage: () => {}, onOpenText: () => {} },
+      { onOpenImage: () => {} },
     );
     const sizes = [...doc.querySelectorAll("#mosaic .mosaic__tile")].map((tile) =>
       [...tile.classList].find((cls) => cls.endsWith("--wide") || cls.endsWith("--narrow")),
@@ -134,7 +176,7 @@ describe("mosaic size cycle (TASK-028)", () => {
 
   it("the same project renders the identical composition on re-render", () => {
     const testProject = project([asset("image", "a.png"), asset("text", "b.txt"), asset("image", "c.png")]);
-    const handlers = { onOpenImage: () => {}, onOpenText: () => {} };
+    const handlers = { onOpenImage: () => {} };
     renderMosaic(doc, testProject, handlers);
     const first = [...doc.querySelectorAll("#mosaic .mosaic__tile")].map((t) => t.className);
     renderMosaic(doc, testProject, handlers);
@@ -143,44 +185,47 @@ describe("mosaic size cycle (TASK-028)", () => {
   });
 });
 
-describe("renderMosaic (TASK-027)", () => {
+describe("renderMosaic (TASK-027, text on cards TASK-041)", () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <main><section id="project-detail"><div id="mosaic" class="mosaic"></div></section></main>
     `;
   });
 
-  it("renders one interactive button per tile", () => {
+  it("image tiles are interactive buttons; text tiles are non-interactive articles", () => {
     renderMosaic(
       doc,
       project([asset("image", "dashboard.png"), asset("text", "notes.txt")]),
-      { onOpenImage: () => {}, onOpenText: () => {} },
+      { onOpenImage: () => {} },
     );
     const tiles = doc.querySelectorAll("#mosaic .mosaic__tile");
     expect(tiles).toHaveLength(2);
-    expect(tiles[0]!.querySelector("button")).toBeInstanceOf(HTMLButtonElement);
-    expect(tiles[1]).toBeInstanceOf(HTMLButtonElement);
+    expect(tiles[0]!.querySelector("button.mosaic__frame")).toBeInstanceOf(HTMLButtonElement);
+    // The text card is a reading surface: an <article> with no button,
+    // no tab stop, and no activation semantics (Section 7).
+    expect(tiles[1]).toBeInstanceOf(HTMLElement);
+    expect(tiles[1]!.tagName).toBe("ARTICLE");
+    expect(tiles[1]!.querySelector("button")).toBeNull();
+    expect(tiles[1]!.getAttribute("tabindex")).toBeNull();
   });
 
-  it("labels image and text tiles accessibly (Section 6.5/7)", () => {
+  it("labels image tiles with aria-labels and text cards with filename labels", () => {
     renderMosaic(doc, project([asset("image", "dashboard.png"), asset("text", "notes.txt")]), {
       onOpenImage: () => {},
-      onOpenText: () => {},
     });
     const frame = doc.querySelector("#mosaic .mosaic__frame")!;
     expect(frame.getAttribute("aria-label")).toBe("Open image dashboard.png");
-    expect(doc.querySelector("#mosaic .mosaic__tile--text")!.getAttribute("aria-label")).toBe(
-      "Open text file notes.txt",
-    );
+    const tile = doc.querySelector("#mosaic .mosaic__tile--text")!;
+    expect(tile.querySelector(".mosaic__file-name")!.textContent).toBe("notes.txt");
+    expect(tile.getAttribute("aria-label")).toBeNull();
   });
 
   it("points images at the deployed path with honest alt text", () => {
     renderMosaic(doc, project([asset("image", "dashboard.png")]), {
       onOpenImage: () => {},
-      onOpenText: () => {},
     });
     const image = doc.querySelector<HTMLImageElement>("#mosaic img")!;
-    expect(image.getAttribute("src")).toBe("projects/2026-01-01/dashboard.png");
+    expect(image.getAttribute("src")).toMatch(/dashboard\.png$/);
     expect(image.alt).toBe("dashboard.png");
   });
 
@@ -188,7 +233,7 @@ describe("renderMosaic (TASK-027)", () => {
     renderMosaic(
       doc,
       project([asset("image", "a.png"), asset("image", "b.png"), asset("image", "c.png")]),
-      { onOpenImage: () => {}, onOpenText: () => {} },
+      { onOpenImage: () => {} },
     );
     const images = [...doc.querySelectorAll<HTMLImageElement>("#mosaic img")];
     expect(images.map((image) => image.getAttribute("loading"))).toEqual([
@@ -198,23 +243,148 @@ describe("renderMosaic (TASK-027)", () => {
     ]);
   });
 
-  it("renders a paired caption beneath its image, not as a separate tile", () => {
-    renderMosaic(doc, project([asset("image", "dashboard.png"), asset("text", "dashboard.txt")]), {
-      onOpenImage: () => {},
-      onOpenText: () => {},
-    });
+  it("renders a paired caption beneath its image, not as a separate tile", async () => {
+    const [image, caption] = [asset("image", "dashboard.png"), asset("text", "dashboard.txt")];
+    stubFetch({ [caption.path]: "paired caption body" });
+    renderMosaic(doc, project([image, caption]), { onOpenImage: () => {} });
     const tiles = doc.querySelectorAll("#mosaic .mosaic__tile");
     expect(tiles).toHaveLength(1); // caption is not a tile
-    const caption = tiles[0]!.querySelector(".mosaic__caption")!;
-    expect(caption.textContent).toBe("dashboard.txt");
+    const captionElement = tiles[0]!.querySelector(".mosaic__caption")!;
+    await vi.waitFor(() =>
+      expect(captionElement.querySelector(".mosaic__text")!.textContent).toBe(
+        "paired caption body",
+      ),
+    );
     // Caption text is untrusted content: textContent only, never markup.
-    expect(caption.firstElementChild).toBeNull();
+    const host = captionElement.querySelector(".mosaic__text")!;
+    expect(host.firstElementChild).toBeNull();
+    expect(host.classList.contains("mosaic__text--plain")).toBe(true);
+  });
+
+  it("renders plain .txt content on the tile", async () => {
+    const text = asset("text", "notes.txt");
+    stubFetch({ [text.path]: "plain body\nsecond line" });
+    renderMosaic(doc, project([text]), { onOpenImage: () => {} });
+    const host = doc.querySelector<HTMLElement>("#mosaic .mosaic__tile--text .mosaic__text")!;
+    await vi.waitFor(() => expect(host.textContent).toBe("plain body\nsecond line"));
+    expect(host.classList.contains("mosaic__text--plain")).toBe(true);
+    expect(host.classList.contains("mosaic__text--loading")).toBe(false);
+    expect(host.firstElementChild).toBeNull();
+  });
+
+  it("renders .md content through the markdown renderer, shifted under the date heading", async () => {
+    const text = asset("text", "notes.md");
+    stubFetch({ [text.path]: "# Title\n\n**bold** and *em*" });
+    renderMosaic(doc, project([text]), { onOpenImage: () => {} });
+    const host = doc.querySelector<HTMLElement>("#mosaic .mosaic__tile--text .mosaic__text")!;
+    await vi.waitFor(() => expect(host.querySelector("h3")).not.toBeNull());
+    expect(host.querySelector("h3")!.textContent).toBe("Title");
+    expect(host.querySelector("strong")!.textContent).toBe("bold");
+    expect(host.querySelector("em")!.textContent).toBe("em");
+    expect(host.classList.contains("mosaic__text--plain")).toBe(false);
+  });
+
+  it("renders .markdown captions as formatted content too", async () => {
+    const [image, caption] = [asset("image", "shot.webp"), asset("text", "shot.markdown")];
+    stubFetch({ [caption.path]: "## Caption *note*" });
+    renderMosaic(doc, project([image, caption]), { onOpenImage: () => {} });
+    const host = doc.querySelector<HTMLElement>("#mosaic .mosaic__caption .mosaic__text")!;
+    await vi.waitFor(() => expect(host.querySelector("h4")).not.toBeNull());
+    expect(host.querySelector("em")!.textContent).toBe("note");
+  });
+
+  it("HTML-like content is never markup (Section 8.1)", async () => {
+    const payload = '<script>alert("x")<\/script><img src=x onerror="alert(1)"><b>bold</b>';
+    const plain = asset("text", "plain.txt");
+    stubFetch({ [plain.path]: payload });
+    renderMosaic(doc, project([plain]), { onOpenImage: () => {} });
+    const host = doc.querySelector<HTMLElement>("#mosaic .mosaic__tile--text .mosaic__text")!;
+    await vi.waitFor(() => expect(host.textContent).toBe(payload));
+    expect(host.firstElementChild).toBeNull();
+    expect(doc.querySelector("#mosaic script")).toBeNull();
+    expect(doc.querySelector("#mosaic img[onerror]")).toBeNull();
+  });
+
+  it("a failed text fetch degrades its own tile and leaves the gallery intact", async () => {
+    const [image, text] = [asset("image", "fine.png"), asset("text", "broken.txt")];
+    stubFetch({ [text.path]: new Error("network down") });
+    renderMosaic(doc, project([image, text]), { onOpenImage: () => {} });
+    const host = doc.querySelector<HTMLElement>("#mosaic .mosaic__tile--text .mosaic__text")!;
+    await vi.waitFor(() => expect(host.classList.contains("mosaic__text--failed")).toBe(true));
+    expect(host.textContent).toBe("broken.txt — unavailable");
+    // The image tile is unaffected.
+    expect(doc.querySelectorAll("#mosaic .mosaic__frame")).toHaveLength(1);
+    expect(host.closest(".mosaic__tile")!.classList.contains("mosaic__tile--image-failed")).toBe(false);
+  });
+
+  it("a failed caption degrades alone; the image tile stays intact", async () => {
+    const [image, caption] = [asset("image", "dashboard.png"), asset("text", "dashboard.txt")];
+    stubFetch({ [caption.path]: new Error("missing") });
+    renderMosaic(doc, project([image, caption]), { onOpenImage: () => {} });
+    const captionElement = doc.querySelector<HTMLElement>("#mosaic .mosaic__caption")!;
+    await vi.waitFor(() =>
+      expect(captionElement.classList.contains("mosaic__caption--failed")).toBe(true),
+    );
+    expect(captionElement.querySelector(".mosaic__text")!.textContent).toBe(
+      "dashboard.txt — unavailable",
+    );
+    const figure = captionElement.closest(".mosaic__tile")!;
+    expect(figure.classList.contains("mosaic__tile--image-failed")).toBe(false);
+    expect(figure.querySelector("img")).not.toBeNull();
+  });
+
+  it("a fetch resolving after a re-render never writes to the detached tile", async () => {
+    const text = asset("text", "slow.txt");
+    let resolveFetch: (body: string) => void = () => {};
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveFetch = (body: string) =>
+            resolve({ ok: true, status: 200, text: async () => body } as unknown as Response);
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const handlers = { onOpenImage: () => {} };
+    renderMosaic(doc, project([text]), handlers);
+    const detachedHost = doc.querySelector<HTMLElement>("#mosaic .mosaic__text")!;
+    expect(detachedHost.textContent).toBe("Loading…");
+
+    renderMosaic(doc, project([text]), handlers); // project switch re-renders
+    const liveHost = doc.querySelector<HTMLElement>("#mosaic .mosaic__text")!;
+    expect(liveHost).not.toBe(detachedHost);
+
+    // loadTextAsset defers the fetch call to a microtask; wait for it
+    // to actually be issued before resolving it.
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    resolveFetch("late content");
+    await vi.waitFor(() => expect(liveHost.textContent).toBe("late content"));
+    // The detached tile was never touched by the resolved fetch.
+    expect(detachedHost.isConnected).toBe(false);
+    expect(detachedHost.textContent).toBe("Loading…");
+  });
+
+  it("re-rendering serves the same asset from the session cache (Section 6.7)", async () => {
+    const text = asset("text", "cached.txt");
+    const fetchMock = vi.fn(async () =>
+      ({ ok: true, status: 200, text: async () => "cached body" }) as unknown as Response,
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const handlers = { onOpenImage: () => {} };
+    renderMosaic(doc, project([text]), handlers);
+    await vi.waitFor(() =>
+      expect(doc.querySelector("#mosaic .mosaic__text")!.textContent).toBe("cached body"),
+    );
+    renderMosaic(doc, project([text]), handlers);
+    await vi.waitFor(() =>
+      expect(doc.querySelector("#mosaic .mosaic__text")!.textContent).toBe("cached body"),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("a broken image degrades its own tile and leaves the gallery intact", () => {
     renderMosaic(doc, project([asset("image", "broken.png"), asset("image", "fine.png")]), {
       onOpenImage: () => {},
-      onOpenText: () => {},
     });
     const images = [...doc.querySelectorAll<HTMLImageElement>("#mosaic img")];
     images[0]!.dispatchEvent(new Event("error"));
@@ -230,7 +400,7 @@ describe("renderMosaic (TASK-027)", () => {
     renderMosaic(
       doc,
       project([asset("text", "notes.txt"), asset("image", "a.png"), asset("image", "b.png")]),
-      { onOpenImage: (index) => opened.push(index), onOpenText: () => {} },
+      { onOpenImage: (index) => opened.push(index) },
     );
     const frames = doc.querySelectorAll("#mosaic .mosaic__frame");
     (frames[0] as HTMLButtonElement).click(); // a.png — index 1 in project.assets
@@ -238,20 +408,8 @@ describe("renderMosaic (TASK-027)", () => {
     expect(opened).toEqual([1, 2]);
   });
 
-  it("text tile clicks pass the asset to the handler", () => {
-    let opened: ProjectAsset | null = null;
-    renderMosaic(doc, project([asset("text", "notes.txt")]), {
-      onOpenImage: () => {},
-      onOpenText: (a) => {
-        opened = a;
-      },
-    });
-    (doc.querySelector("#mosaic .mosaic__tile--text") as HTMLButtonElement).click();
-    expect(opened).toMatchObject({ name: "notes.txt", path: "projects/2026-01-01/notes.txt" });
-  });
-
   it("is idempotent: re-rendering never duplicates tiles", () => {
-    const handlers = { onOpenImage: () => {}, onOpenText: () => {} };
+    const handlers = { onOpenImage: () => {} };
     const testProject = project([asset("image", "a.png")]);
     renderMosaic(doc, testProject, handlers);
     renderMosaic(doc, testProject, handlers);
@@ -259,7 +417,7 @@ describe("renderMosaic (TASK-027)", () => {
   });
 
   it("an empty asset list renders an empty mosaic without error", () => {
-    expect(() => renderMosaic(doc, project([]), { onOpenImage: () => {}, onOpenText: () => {} })).not.toThrow();
+    expect(() => renderMosaic(doc, project([]), { onOpenImage: () => {} })).not.toThrow();
     expect(doc.getElementById("mosaic")!.childElementCount).toBe(0);
   });
 });
@@ -297,17 +455,13 @@ describe("gallery wiring through the state model", () => {
     return state;
   }
 
-  it("opening a project renders its tiles; tile clicks transition the state model", () => {
+  it("opening a project renders its tiles; image tile clicks transition the state model", () => {
     const state = setup();
     state.openProject(testProject.id);
     expect(doc.querySelectorAll("#mosaic .mosaic__tile")).toHaveLength(2); // image tile (with caption) + text tile
 
     (doc.querySelector("#mosaic .mosaic__frame") as HTMLButtonElement).click();
     expect(state.get()).toEqual({ mode: "image", projectId: testProject.id, assetIndex: 0 });
-
-    (doc.querySelector("#mosaic .mosaic__tile--text") as HTMLButtonElement).click();
-    // dashboard.txt became the image's caption; notes.txt is the text tile.
-    expect(state.get()).toEqual({ mode: "text", projectId: testProject.id, assetPath: testProject.assets[2]!.path });
   });
 
   it("switching projects re-renders the mosaic without duplication", () => {

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { initImageViewer } from "../../src/components/ImageViewer";
-import { initTextViewer } from "../../src/components/TextViewer";
 import { renderMosaic } from "../../src/components/ProjectGallery";
+import { resetTextAssetCache } from "../../src/services/text-assets";
 import { createViewStateManager, type ViewStateManager } from "../../src/services/view-state";
 import type { Project, ProjectAsset } from "../../src/data/types";
 
@@ -42,40 +42,42 @@ beforeEach(() => {
         <button id="image-next" type="button" aria-label="Next image"></button>
       </nav>
     </dialog>
-    <dialog id="text-viewer" class="viewer text-viewer" aria-label="Text viewer">
-      <button class="viewer__close" type="button" aria-label="Close text viewer"></button>
-      <h3 id="text-viewer-title"></h3>
-      <pre id="text-viewer-content"></pre>
-    </dialog>
   `;
   document.body.dataset.mode = "overview";
   shimDialogs();
+  // Text content renders on the gallery cards (TASK-041), so any
+  // rendered gallery issues text fetches; stub them deterministically.
+  resetTextAssetCache();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({ ok: true, status: 200, text: async () => "card text" }) as unknown as Response),
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 /** jsdom implements no <dialog> methods; shim the modal bits the components rely on. */
 function shimDialogs() {
-  for (const id of ["image-viewer", "text-viewer"]) {
-    const dialog = document.getElementById(id) as HTMLDialogElement;
-    dialog.showModal = function showModal() {
-      this.setAttribute("open", "");
-    };
-    dialog.show = function show() {
-      this.setAttribute("open", "");
-    };
-    dialog.close = function close() {
-      this.removeAttribute("open");
-      this.dispatchEvent(new Event("close"));
-    };
-  }
+  const dialog = document.getElementById("image-viewer") as HTMLDialogElement;
+  dialog.showModal = function showModal() {
+    this.setAttribute("open", "");
+  };
+  dialog.show = function show() {
+    this.setAttribute("open", "");
+  };
+  dialog.close = function close() {
+    this.removeAttribute("open");
+    this.dispatchEvent(new Event("close"));
+  };
 }
 
 function setup(): { state: ViewStateManager } {
   const state = createViewStateManager([testProject.id]);
   initImageViewer(doc, state, [testProject]);
-  initTextViewer(doc, state, [testProject]);
   renderMosaic(doc, testProject, {
     onOpenImage: (index) => state.openImage(testProject.id, index),
-    onOpenText: (asset_) => state.openText(testProject.id, asset_.path),
   });
   return { state };
 }
@@ -170,125 +172,5 @@ describe("image viewer (TASK-029)", () => {
     state.closeProject();
     expect(state.get()).toEqual({ mode: "overview" });
     expect((doc.getElementById("image-viewer") as HTMLDialogElement).open).toBe(false);
-  });
-});
-
-describe("text viewer (TASK-030)", () => {
-  function stubFetch(responses: Record<string, string | Error>) {
-    const fetchMock = vi.fn(async (path: string) => {
-      const response = responses[path];
-      if (response instanceof Error) throw response;
-      return { ok: true, status: 200, text: async () => response } as unknown as Response;
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    return fetchMock;
-  }
-
-  it("opens the correct file with its filename and project date", async () => {
-    stubFetch({ "projects/2026-01-01/notes.txt": "hello" });
-    const { state } = setup();
-    state.openProject(testProject.id);
-    const tile = doc.querySelector('button[aria-label="Open text file notes.txt"]') as HTMLButtonElement;
-    tile.click();
-    const dialog = doc.getElementById("text-viewer") as HTMLDialogElement;
-    expect(state.get()).toEqual({
-      mode: "text",
-      projectId: testProject.id,
-      assetPath: "projects/2026-01-01/notes.txt",
-    });
-    expect(dialog.open).toBe(true);
-    expect(doc.getElementById("text-viewer-title")!.textContent).toBe("notes.txt — Jan 1, 2026");
-    await vi.waitFor(() => expect(doc.getElementById("text-viewer-content")!.textContent).toBe("hello"));
-  });
-
-  it("renders HTML-like content as plain text, never as markup (Section 8.1)", async () => {
-    const payload = '<script>alert("x")<\/script><b>bold</b>';
-    stubFetch({ "projects/2026-01-01/notes.txt": payload });
-    const { state } = setup();
-    state.openProject(testProject.id);
-    (doc.querySelector('button[aria-label="Open text file notes.txt"]') as HTMLButtonElement).click();
-    const content = doc.getElementById("text-viewer-content")!;
-    await vi.waitFor(() => expect(content.textContent).toBe(payload));
-    expect(content.firstElementChild).toBeNull(); // nothing was parsed as HTML
-    expect(doc.querySelector("#text-viewer script")).toBeNull();
-  });
-
-  it("shows a loading state before the fetch resolves", () => {
-    stubFetch({ "projects/2026-01-01/notes.txt": "slow" });
-    const { state } = setup();
-    state.openProject(testProject.id);
-    (doc.querySelector('button[aria-label="Open text file notes.txt"]') as HTMLButtonElement).click();
-    // The fetch resolves in a microtask; the synchronous render first
-    // shows the loading state on the way there.
-    expect(doc.getElementById("text-viewer-content")!.textContent).toBe("Loading…");
-  });
-
-  it("a failed fetch shows an error and the viewer still closes", async () => {
-    stubFetch({ "projects/2026-01-01/notes.txt": new Error("network down") });
-    const { state } = setup();
-    state.openProject(testProject.id);
-    (doc.querySelector('button[aria-label="Open text file notes.txt"]') as HTMLButtonElement).click();
-    const dialog = doc.getElementById("text-viewer") as HTMLDialogElement;
-    const content = doc.getElementById("text-viewer-content")!;
-    await vi.waitFor(() => expect(dialog.classList.contains("text-viewer--error")).toBe(true));
-    expect(content.textContent).toContain("could not be loaded");
-    (dialog.querySelector(".viewer__close") as HTMLButtonElement).click();
-    expect(state.get()).toEqual({ mode: "project", projectId: testProject.id });
-  });
-
-  it("reopening the same document does not refetch it (Section 6.7)", async () => {
-    const fetchMock = stubFetch({ "projects/2026-01-01/notes.txt": "cached" });
-    const { state } = setup();
-    state.openProject(testProject.id);
-    const tile = doc.querySelector('button[aria-label="Open text file notes.txt"]') as HTMLButtonElement;
-    tile.click();
-    await vi.waitFor(() => expect(doc.getElementById("text-viewer-content")!.textContent).toBe("cached"));
-    (doc.querySelector("#text-viewer .viewer__close") as HTMLButtonElement).click();
-    tile.click(); // reopen the same document
-    await vi.waitFor(() => expect(doc.getElementById("text-viewer-content")!.textContent).toBe("cached"));
-    expect(fetchMock).toHaveBeenCalledTimes(1); // served from the session cache
-  });
-
-  it("closing returns to the project detail and restores tile focus", async () => {
-    stubFetch({ "projects/2026-01-01/notes.txt": "hello" });
-    const { state } = setup();
-    state.openProject(testProject.id);
-    const tile = doc.querySelector('button[aria-label="Open text file notes.txt"]') as HTMLButtonElement;
-    tile.focus(); // jsdom's click() does not move focus; browsers do
-    tile.click();
-    await vi.waitFor(() =>
-      expect((doc.getElementById("text-viewer") as HTMLDialogElement).open).toBe(true),
-    );
-    (doc.getElementById("text-viewer") as HTMLDialogElement).close(); // what Escape triggers
-    expect(state.get()).toEqual({ mode: "project", projectId: testProject.id });
-    expect(doc.activeElement).toBe(tile);
-  });
-
-  it("a superseded open never renders a stale document", async () => {
-    // Two standalone text tiles (no caption pairing).
-    const twoTexts: Project = {
-      ...testProject,
-      assets: [asset("text", "first.txt"), asset("text", "second.md")],
-    };
-    const state = createViewStateManager([twoTexts.id]);
-    initTextViewer(doc, state, [twoTexts]);
-    renderMosaic(doc, twoTexts, {
-      onOpenImage: () => {},
-      onOpenText: (asset_) => state.openText(twoTexts.id, asset_.path),
-    });
-    stubFetch({
-      "projects/2026-01-01/first.txt": "document a",
-      "projects/2026-01-01/second.md": "document notes",
-    });
-    state.openProject(twoTexts.id);
-    (doc.querySelector('button[aria-label="Open text file first.txt"]') as HTMLButtonElement).click();
-    (doc.querySelector('button[aria-label="Open text file second.md"]') as HTMLButtonElement).click();
-    await vi.waitFor(() =>
-      expect(doc.getElementById("text-viewer-content")!.textContent).toBe("document notes"),
-    );
-    // first.txt's fetch resolved last in list order but must not win.
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(doc.getElementById("text-viewer-content")!.textContent).toBe("document notes");
-    expect(state.get()).toMatchObject({ mode: "text", assetPath: "projects/2026-01-01/second.md" });
   });
 });

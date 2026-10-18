@@ -22,7 +22,7 @@ Selecting a project transitions the page into a project-detail state:
 - The selected date becomes visually active.
 - An irregular, art-directed mosaic of project images and text files appears between the introduction area and the timeline.
 - Clicking an image opens a large image viewer.
-- Clicking a text tile opens a readable text viewer.
+- Text tiles render their content directly on the card — `.md`/`.markdown` formatted, other text as plain text (TASK-041; the first release used a text viewer modal instead).
 - Closing the project returns the interface to the timeline overview, with the timeline centered and horizontal navigation available again.
 
 On mobile devices, the timeline becomes vertical, the introduction stays at the beginning of the page, and project navigation remains usable without horizontal page overflow.
@@ -235,9 +235,9 @@ Initial support should include:
 - `.md`
 - `.markdown`
 
-Text files must be displayed as text, not interpreted as HTML or executed as code. Markdown rendering, if added, must use a safe renderer that sanitizes generated HTML. The simplest first release may display Markdown as plain text.
+Text files must be displayed as text, not interpreted as HTML or executed as code. Markdown rendering, if added, must use a safe renderer that sanitizes generated HTML. The simplest first release may display Markdown as plain text. **TASK-041 note:** the release renders `.md`/`.markdown` formatted on the gallery cards through an in-house, DOM-constructing renderer that is safe by construction — it builds output only with `createElement`/`textContent` and never generates HTML, so no sanitizer is needed (a stronger guarantee than sanitizing; reason recorded per Section 15).
 
-Text file names should be displayed on their gallery tiles, with a short preview where appropriate.
+Text file names should be displayed on their gallery tiles, with a short preview where appropriate. (TASK-041 renders the file's full content on the tile; the filename labels the card as its header.)
 
 If there's a text file with the same name as an image file, the text should be displayed as complementary content beneath the image, like a caption. The text file should not be interpreted as a separate gallery tile in this case.
 
@@ -507,6 +507,8 @@ If an image fails to load, show a useful fallback and allow the viewer to close 
 
 ## 6.7 Text viewer
 
+> **Superseded by TASK-041:** text content now renders directly on the gallery cards (`.md`/`.markdown` formatted, other text plain), and the modal text viewer — component, dialog markup, styles, and the state model's `text` mode — was removed. The original section is kept below for history.
+
 Clicking a text tile opens a readable text viewer.
 
 Requirements:
@@ -586,7 +588,7 @@ type ViewState =
     };
 ```
 
-The image and text viewer states imply that a project is active. The implementation may instead model overlays as a separate field if that produces simpler transitions.
+The image and text viewer states imply that a project is active. The implementation may instead model overlays as a separate field if that produces simpler transitions. (TASK-041 removed the `text` state when the text viewer was replaced by on-card content; the shipped union is overview / project / image.)
 
 Do not create separate competing booleans such as `isProjectOpen`, `isImageOpen`, `isTextOpen`, and `isIntroHidden` without a clear consistency model.
 
@@ -1290,7 +1292,7 @@ The plan must be committed to version control alongside implementation changes.
 
 **Implementation notes (TASK-023):**
 - The model is pure — no DOM, no fetches — so UI wiring (TASK-024+) subscribes and drives transitions and focus management from the `(next, previous)` diff. That wiring is where asset existence is checked (the model validates ids and shapes only).
-- `openImage`/`openText` are restricted to the *currently active* project so a viewer can never disagree with the displayed detail state; `openProject` is intentionally allowed from viewer modes to honor Section 6.4's direct-switch rule.
+- `openImage`/`openText` are restricted to the *currently active* project so a viewer can never disagree with the displayed detail state; `openProject` is intentionally allowed from viewer modes to honor Section 6.4's direct-switch rule. (TASK-041 later removed `openText` and the `text` mode together with the text viewer.)
 - `closeOverlay` (viewer → its project's detail) and `closeProject` (any → overview) are separate transitions so the detail close button (TASK-026) and viewer close buttons (TASK-029/030) have distinct, composable semantics.
 
 ### TASK-024 — Open a project from a timeline marker
@@ -1437,6 +1439,8 @@ The plan must be committed to version control alongside implementation changes.
 
 ### TASK-030 — Implement the text viewer
 
+> **Superseded by TASK-041:** text content now renders on the gallery cards and the modal text viewer was removed (`src/components/TextViewer.ts` deleted; dialog markup, styles, and the `text` view state removed with it). This entry is kept for history.
+
 **Dependencies:** TASK-027, TASK-023
 
 **Actions:**
@@ -1550,7 +1554,7 @@ The plan must be committed to version control alongside implementation changes.
 - [x] Focus is restored after each closing transition. — Viewer → the opening tile (image and text, Escape and close button); project detail → the marker that opened it; browser-verified via the keyboard journey end to end.
 
 **Implementation notes (TASK-034):**
-- Two concrete fixes: `<main id="main-content">` gained `tabindex="-1"` so the skip link's fragment navigation actually moves focus there (fragment targets are unfocusable otherwise), and the dialog Tab-wrap above. Everything else (button markers/tiles, native dialog semantics, Escape, focus-restore paths) was already in place from TASK-018/021/022/026/029/030 — this task verified it as a system rather than rebuilt it.
+- Two concrete fixes: `<main id="main-content">` gained `tabindex="-1"` so the skip link's fragment navigation actually moves focus there (fragment targets are unfocusable otherwise), and the dialog Tab-wrap above. Everything else (button markers/tiles, native dialog semantics, Escape, focus-restore paths) was already in place from TASK-018/021/022/026/029/030 — this task verified it as a system rather than rebuilt it. (TASK-041 later removed the text-viewer leg of this journey; text tiles are now non-interactive articles, so keyboard users Tab past them between the image tiles and the image viewer.)
 - Verification: 214/214 tests (3 new focus-wrap tests), `tsc --noEmit` clean; 24/24 keyboard-journey checks in headless Chromium at desktop and mobile sizes, reduced-motion included, no console errors.
 
 ### TASK-035 — Implement reduced-motion support (SKIP, DO NOT IMPLEMENT)
@@ -1658,6 +1662,34 @@ The plan must be committed to version control alongside implementation changes.
 **Implementation notes (TASK-040):**
 - The dead `dev` script (`vite`) was removed from `package.json` — vite was never installed; the sources are native TypeScript and the build output is previewed over HTTP instead. Documented command contract change per Section 5.2.
 
+### TASK-041 — Render text content on gallery cards; remove the text viewer
+
+**Dependencies:** TASK-027, TASK-028, TASK-030
+
+**Actions:**
+- Replace the modal text viewer with on-card text content.
+- Render `.md`/`.markdown` formatted via an in-house, dependency-free renderer.
+- Render paired captions' content, not just their filenames.
+- Lazy-fetch text as tiles scroll into view, with per-session memoization.
+- Remove the `text` view-state mode, the `#text-viewer` dialog, and their styles.
+
+**Acceptance criteria:**
+- [x] Text content renders on the gallery cards. — Standalone text tiles are non-interactive `<article>` cards (filename header + content body); `.md`/`.markdown` render through the markdown renderer, other text as plain `textContent`. Verified in headless Chromium on the real build: `intro.txt` shows its plain body, `test-markdown.md` shows heading/bold/italic/link, and no `#text-viewer` exists in the document.
+- [x] Markdown renders safely (Section 8.1). — `src/utils/markdown.ts` builds output exclusively with `createElement`/`textContent`/`append` — never `innerHTML` — so it is safe by construction and needs no sanitizer (Section 4.3 records the rationale). Unit-tested: raw `<script>`/`<img onerror>`/`<b onclick>` payloads stay literal text; `javascript:`/`data:`/protocol-relative links render as literal source (scheme allowlist in `isSafeUrl`); rendered links carry `rel="noopener noreferrer"` with plain navigation.
+- [x] Paired captions render their content (Section 4.3). — A caption is a `figcaption` whose `.mosaic__text` host is filled by the same helper as tiles; failure degrades only that caption (`mosaic__caption--failed`), leaving the image tile intact. Unit-tested for `.txt` and `.markdown` captions.
+- [x] Text is fetched lazily and memoized (Sections 8.4, 6.7). — One shared `IntersectionObserver` starts each fetch only when its tile scrolls into view (browser-verified: a below-the-fold tile stays in its loading state until scrolled); `renderMosaic` disconnects the observer so project switches never fire stale fetches. `src/services/text-assets.ts` memoizes per session, failures included (the TextViewer's closure cache, moved to module scope with a test seam).
+- [x] Failures degrade only their own host (Section 8.3). — Failed fetches show `<name> — unavailable` with a muted failed state on that tile or caption alone; every async fill re-checks `host.isConnected`, so a fetch resolving after a re-render never writes to a detached tile (unit-tested with a deferred fetch).
+- [x] The text viewer and `text` state mode are fully removed. — `src/components/TextViewer.ts` deleted; the `ViewState` union, `openText`, `closeOverlay`, and `activeProjectId` lose their text cases; `ViewerDialog`/`ProjectDetail`/`main.ts`/`index.template.html`/`overlays.css` updated; template spec asserts no `id="text-viewer"` remains.
+- [x] Text tiles are not keyboard traps or tab stops (Section 7). — Tiles are articles with no button, tabindex, or role; keyboard journey re-verified in the browser (image viewer flow unchanged, focus restore intact).
+
+**Implementation notes (TASK-041):**
+- Safety rationale: the renderer is a line-oriented two-pass parser (blocks, then an inline scanner: code spans → links → strong → em) whose only DOM operations are construction APIs — untrusted content can become text nodes or a fixed set of element types, never markup. This is deliberately stronger than "sanitize the generated HTML" and means zero new dependencies.
+- `renderMarkdown(doc, source, { headingOffset })`: gallery cards pass `headingOffset: 2` so a document's `#` heading lands under the `h2` project date; levels clamp at h6. Documented parser limitations: no setext headings, reference links, images, entity decoding, HTML blocks, or nested lists (items are inline-only); blockquotes nest to depth 4; fences are lenient about missing closers.
+- Lazy fetch mechanics: `IntersectionObserver` is feature-detected — where unavailable (jsdom), fetches start immediately, mirroring `loading="lazy"` for images. The observer and its pending map live at module level and are reset by every `renderMosaic`.
+- The session cache moved from the deleted TextViewer's closure to `src/services/text-assets.ts` (`loadTextAsset`/`resetTextAssetCache`); `loadTextAsset` defers the `fetch` call into a microtask so a synchronously-throwing or missing `fetch` becomes a cached rejection, never an uncaught error.
+- Bundle delta (minified JS, concatenated CSS): +2,222 bytes JS / +2,383 bytes CSS despite deleting TextViewer — the renderer plus card/caption/markdown styles; no runtime dependencies added.
+- Tests: 253/253 pass (was 223), `tsc --noEmit` clean. New `markdown.spec.ts` (27) and `text-assets.spec.ts` (6); `project-gallery.spec.ts` rewritten for on-card content (29, including detached-host, session-cache, plain/markdown, and per-host failure cases); viewer/coordination/view-state/template specs updated for the removal; the "text fetch resolves after close" coordination case was re-homed as the gallery's detached-host test. Browser verification: 15/15 checks in headless Chromium on the real build, no console errors.
+
 ---
 
 # 12. Dependency Overview
@@ -1714,6 +1746,9 @@ flowchart TD
     AK --> AM[TASK-040 Final release]
     AL --> AM
     M --> AM
+    Z --> AN[TASK-041 Text content on cards]
+    AA --> AN
+    AC --> AN
 ```
 
 This graph is a high-level overview. The task-level dependency lists are authoritative if there is a discrepancy.
@@ -1732,7 +1767,7 @@ The project is complete only when all of the following conditions hold:
 - [ ] Opening a project hides the introduction from the visible composition.
 - [ ] The timeline remains visible and usable in project-detail mode.
 - [ ] Project images and text files appear in the editorial mosaic.
-- [ ] Image and text viewers work and close correctly.
+- [ ] The image viewer works and closes correctly; text content renders on gallery cards.
 - [ ] Closing a project restores the introduction and overview timeline.
 - [ ] The mobile timeline is vertical.
 - [ ] The site works at a GitHub Pages repository subpath.

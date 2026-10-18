@@ -65,7 +65,8 @@
     </div>
   </nav>
 
-  <!-- Overlays: large image viewer and text viewer (TASK-029/030). -->
+  <!-- Overlay: the large image viewer (TASK-029). Text content renders
+       on the gallery cards (TASK-041), so there is no text viewer. -->
   <dialog id="image-viewer" class="viewer image-viewer" aria-label="Image viewer">
     <button class="viewer__close" type="button" aria-label="Close image viewer"></button>
     <img id="image-viewer-img" alt="" />
@@ -73,12 +74,6 @@
       <button id="image-prev" type="button" aria-label="Previous image"></button>
       <button id="image-next" type="button" aria-label="Next image"></button>
     </nav>
-  </dialog>
-
-  <dialog id="text-viewer" class="viewer text-viewer" aria-label="Text viewer">
-    <button class="viewer__close" type="button" aria-label="Close text viewer"></button>
-    <h3 id="text-viewer-title"></h3>
-    <pre id="text-viewer-content"></pre>
   </dialog>
 
   <!-- Application data, embedded safely by the build (manifest +

@@ -2,32 +2,34 @@
  * Application state model (TASK-023, Section 6.10).
  *
  * A single, explicit view state — never competing booleans. The image
- * and text viewer states imply that their project is active, keeping
- * one flat state with no overlapping modes. The model is pure (no DOM,
- * no fetches): UI components subscribe and drive transitions and focus
+ * viewer state implies that its project is active, keeping one flat
+ * state with no overlapping modes. The model is pure (no DOM, no
+ * fetches): UI components subscribe and drive transitions and focus
  * from the (next, previous) diff.
  *
  * Transition rules (deterministic; every call either replaces the state
  * or is a no-op):
- * - `openProject(id)`     — valid from any mode for a known project id;
- *                           selecting another marker switches projects
- *                           directly (Section 6.4), replacing whatever
- *                           viewer or detail was open, so no stale UI.
- * - `openImage`/`openText`— only while that same project is active;
- *                           a viewer for a non-active project would be
- *                           inconsistent with the detail state.
- * - `closeOverlay()`      — image/text → their project's detail state;
- *                           a no-op in project/overview modes (the
- *                           detail close button is `closeProject`).
- * - `closeProject()`      — from any mode → overview.
+ * - `openProject(id)` — valid from any mode for a known project id;
+ *                         selecting another marker switches projects
+ *                         directly (Section 6.4), replacing whatever
+ *                         viewer or detail was open, so no stale UI.
+ * - `openImage`         — only while that same project is active; a
+ *                         viewer for a non-active project would be
+ *                         inconsistent with the detail state.
+ * - `closeOverlay()`    — image → its project's detail state; a no-op
+ *                         in project/overview modes (the detail close
+ *                         button is `closeProject`).
+ * - `closeProject()`    — from any mode → overview.
+ *
+ * (TASK-041 removed the `text` mode: text content renders on the
+ * gallery cards, so there is no text viewer to model.)
  */
 
 /** The single application view state (Section 6.10). */
 export type ViewState =
   | { mode: "overview" }
   | { mode: "project"; projectId: string }
-  | { mode: "image"; projectId: string; assetIndex: number }
-  | { mode: "text"; projectId: string; assetPath: string };
+  | { mode: "image"; projectId: string; assetIndex: number };
 
 export type ViewStateListener = (next: ViewState, previous: ViewState) => void;
 
@@ -41,9 +43,7 @@ export type ViewStateManager = {
   closeProject: () => boolean;
   /** Opens the active project's image viewer; false when not possible. */
   openImage: (projectId: string, assetIndex: number) => boolean;
-  /** Opens the active project's text viewer; false when not possible. */
-  openText: (projectId: string, assetPath: string) => boolean;
-  /** image/text → their project's detail state; false otherwise. */
+  /** image → its project's detail state; false otherwise. */
   closeOverlay: () => boolean;
 };
 
@@ -59,11 +59,6 @@ function statesEqual(a: ViewState, b: ViewState): boolean {
       return (
         a.projectId === (b as typeof a).projectId &&
         a.assetIndex === (b as typeof a).assetIndex
-      );
-    case "text":
-      return (
-        a.projectId === (b as typeof a).projectId &&
-        a.assetPath === (b as typeof a).assetPath
       );
   }
 }
@@ -93,7 +88,6 @@ export function createViewStateManager(
     switch (current.mode) {
       case "project":
       case "image":
-      case "text":
         return current.projectId;
       case "overview":
         return null;
@@ -126,14 +120,8 @@ export function createViewStateManager(
       return transition({ mode: "image", projectId, assetIndex });
     },
 
-    openText(projectId, assetPath) {
-      if (activeProjectId() !== projectId) return false;
-      if (assetPath.length === 0) return false;
-      return transition({ mode: "text", projectId, assetPath });
-    },
-
     closeOverlay() {
-      if (current.mode === "image" || current.mode === "text") {
+      if (current.mode === "image") {
         return transition({ mode: "project", projectId: current.projectId });
       }
       return false;

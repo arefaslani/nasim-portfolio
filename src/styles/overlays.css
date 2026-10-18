@@ -1,8 +1,9 @@
 /*
- * Overlays (TASK-029/030, Sections 6.6–6.7): the image and text
- * viewers are modal <dialog> elements driven by the state model.
- * showModal makes the background inert (no clicks, no focus); the
- * scroll lock below also stops wheel/scrollbar page movement.
+ * Overlays (TASK-029, Sections 6.6–6.7): the image viewer is a modal
+ * <dialog> element driven by the state model. showModal makes the
+ * background inert (no clicks, no focus); the scroll lock below also
+ * stops wheel/scrollbar page movement. (The text viewer was removed in
+ * TASK-041 — text content renders on the gallery cards.)
  */
 
 /* One modal open at a time by construction (the state model), so a
@@ -144,33 +145,3 @@ dialog.viewer::backdrop {
   cursor: default;
 }
 
-/* --- Text viewer (TASK-030) --- */
-
-#text-viewer {
-  width: min(90vw, 52rem);
-  max-width: none;
-  padding: var(--space-8);
-}
-
-#text-viewer-title {
-  margin: 0 2.75rem var(--space-6) 0; /* clears the close control */
-  font-family: var(--font-display);
-  font-size: var(--text-size-xl);
-  letter-spacing: var(--letter-spacing-wide);
-}
-
-#text-viewer-content {
-  max-height: 70vh;
-  overflow: auto; /* long documents scroll inside the viewer (6.7) */
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: var(--text-size-sm);
-  line-height: var(--line-height-body);
-  white-space: pre-wrap; /* meaningful whitespace and line breaks */
-  overflow-wrap: anywhere;
-}
-
-.text-viewer--error #text-viewer-content {
-  color: var(--color-ink-muted);
-  font-style: italic;
-}

@@ -64,13 +64,12 @@ export function initProjectDetail(
     if (next.mode === "project") {
       const project = projects.find((candidate) => candidate.id === next.projectId);
       if (project === undefined) return; // defensive; ids are pre-validated
-      // Returning from the same project's image/text viewer changes
+      // Returning from the same project's image viewer changes
       // nothing visually — the region, date, and mosaic are already
       // correct — and re-rendering here would detach the mosaic tile
       // that the viewer is about to restore focus to (Sections 6.6-6.8).
       const fromViewer =
-        (previous?.mode === "image" || previous?.mode === "text") &&
-        previous.projectId === next.projectId;
+        previous?.mode === "image" && previous.projectId === next.projectId;
       // Remember the marker the user activated so closing can restore
       // focus to it (Section 6.8) — captured before the date heading
       // takes focus.
@@ -79,11 +78,10 @@ export function initProjectDetail(
       setActiveMarker(doc, next.projectId);
       if (!fromViewer) {
         showProjectDetail(doc, project);
-        // Gallery tiles open viewers through the state model; the
-        // viewer dialogs themselves light up in TASK-029/030.
+        // Gallery image tiles open the viewer through the state model;
+        // text renders on the cards themselves (TASK-041).
         renderMosaic(doc, project, {
           onOpenImage: (assetIndex) => state.openImage(next.projectId, assetIndex),
-          onOpenText: (asset) => state.openText(next.projectId, asset.path),
         });
       }
       hideHoverCard(hoverCard);
