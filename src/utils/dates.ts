@@ -10,6 +10,11 @@ export function isIsoDate(iso: string): boolean {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(iso);
 }
 
+/** The YYYY segment of an ISO date, or "" when not a valid date. */
+export function yearOf(iso: string): string {
+  return isIsoDate(iso) ? iso.slice(0, 4) : "";
+}
+
 /** Format an ISO date for the given locale, e.g. "Dec 3, 2026". */
 export function formatDate(iso: string, locale = "en-US"): string {
   if (!isIsoDate(iso)) {

@@ -1,16 +1,21 @@
 import type { ProjectManifest } from "../data/types.ts";
-import { formatDate } from "../utils/dates.ts";
+import { formatDate, yearOf } from "../utils/dates.ts";
 
 /**
  * Timeline component (TASK-018): renders one marker per manifest entry,
  * newest first (manifest order). Markers are buttons so they are keyboard
  * operable; the state model (TASK-023) supplies the selection callback.
  *
+ * Each item is a node on a horizontal rail: thumbnails alternate above
+ * and below it (`data-side`), joined by a stem, with the date label on
+ * the opposite side of the rail. Where consecutive projects cross a year
+ * boundary, a decorative year tick (a separate, presentational li)
+ * marks the transition on the rail. The geometry is all CSS and fixed
+ * (never image-dependent), so layout measurements are final at render.
+ *
  * The timeline itself stays in the DOM with zero projects — the designed
  * empty state (Section 6.1) takes over instead.
  */
-
-/** Marker width comes from CSS; keep them in sync via the same var. */
 
 export function renderTimeline(
   doc: Document,
@@ -29,19 +34,33 @@ export function renderTimeline(
   }
   if (isEmpty) return;
 
-  for (const project of manifest.projects) {
-    list.append(createMarker(doc, project, onSelect));
+  for (const [index, project] of manifest.projects.entries()) {
+    // Chronology beats at year boundaries: a tick labeled with the older
+    // year (manifests are newest-first, so the current project's year).
+    if (index > 0) {
+      const year = yearOf(project.date);
+      const previousYear = yearOf(manifest.projects[index - 1].date);
+      if (year !== "" && year !== previousYear) {
+        list.append(createYearTick(doc, index, year));
+      }
+    }
+    list.append(createMarker(doc, project, index, onSelect));
   }
 }
 
 function createMarker(
   doc: Document,
   project: ProjectManifest["projects"][number],
+  index: number,
   onSelect: (projectId: string) => void,
 ): HTMLLIElement {
   const item = doc.createElement("li");
   item.className = "timeline__item";
   item.dataset.projectId = project.id;
+  // Zigzag: newest (index 0) rides above the rail, then alternate.
+  item.dataset.side = index % 2 === 0 ? "above" : "below";
+  // Staggered entrance (timeline.css): each marker enters 45ms later.
+  item.style.setProperty("--timeline-index", String(index));
 
   const button = doc.createElement("button");
   button.type = "button";
@@ -64,14 +83,43 @@ function createMarker(
     item.classList.add("timeline__item--image-failed");
   });
 
+  // The date sits beside the item on the rail (across from its
+  // thumbnail), outside the button: hover cards anchor the button, so
+  // its box must stay exactly the thumbnail box.
   const date = doc.createElement("span");
   date.className = "timeline__date";
   date.textContent = formatDate(project.date);
 
-  button.append(image, date);
+  button.append(image);
   button.addEventListener("click", () => onSelect(project.id));
-  item.append(button);
+  item.append(button, date);
   return item;
+}
+
+/**
+ * A decorative year marker between two projects of different years.
+ * A separate li (never a span inside an item) so the ol's children
+ * remain one-li-per-project for every `.timeline__item` selector and
+ * `centerNewest`'s first-item lookup; `role="presentation"` +
+ * `aria-hidden` keep the list semantics intact.
+ */
+function createYearTick(
+  doc: Document,
+  index: number,
+  year: string,
+): HTMLLIElement {
+  const tick = doc.createElement("li");
+  tick.className = "timeline__year";
+  tick.setAttribute("role", "presentation");
+  tick.setAttribute("aria-hidden", "true");
+  // Share the entrance stagger with the project it precedes.
+  tick.style.setProperty("--timeline-index", String(index));
+
+  const label = doc.createElement("span");
+  label.className = "timeline__year-label";
+  label.textContent = year;
+  tick.append(label);
+  return tick;
 }
 
 /**

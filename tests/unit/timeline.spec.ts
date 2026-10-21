@@ -8,7 +8,7 @@ import {
   renderTimeline,
   setActiveMarker,
 } from "../../src/components/Timeline";
-import { formatDate, isIsoDate } from "../../src/utils/dates";
+import { formatDate, isIsoDate, yearOf } from "../../src/utils/dates";
 import type { ProjectManifest } from "../../src/data/types";
 
 const doc = document;
@@ -85,6 +85,74 @@ describe("renderTimeline", () => {
   });
 });
 
+describe("zigzag sides and year ticks", () => {
+  it("alternates data-side above/below by index, newest first", () => {
+    renderTimeline(doc, makeManifest(["2026-12-03", "2026-11-20", "2026-10-15"]), () => {});
+    const sides = [...doc.querySelectorAll(".timeline__item")].map(
+      (item) => (item as HTMLElement).dataset.side,
+    );
+    expect(sides).toEqual(["above", "below", "above"]);
+  });
+
+  it("sets a stagger index on each item", () => {
+    renderTimeline(doc, makeManifest(["2026-12-03", "2026-11-20"]), () => {});
+    const indexes = [...doc.querySelectorAll(".timeline__item")].map((item) =>
+      (item as HTMLElement).style.getPropertyValue("--timeline-index"),
+    );
+    expect(indexes).toEqual(["0", "1"]);
+  });
+
+  it("inserts one hidden tick per year boundary, labeled with the older year", () => {
+    renderTimeline(
+      doc,
+      makeManifest(["2026-12-03", "2026-01-05", "2025-11-02", "2025-03-01", "2024-06-10"]),
+      () => {},
+    );
+    const ticks = [...doc.querySelectorAll(".timeline__year")];
+    expect(ticks).toHaveLength(2);
+    expect(ticks[0]?.textContent).toBe("2025"); // 2026-01-05 → 2025-11-02
+    expect(ticks[1]?.textContent).toBe("2024"); // 2025-03-01 → 2024-06-10
+    for (const tick of ticks) {
+      expect(tick.getAttribute("aria-hidden")).toBe("true");
+      expect(tick.getAttribute("role")).toBe("presentation");
+    }
+  });
+
+  it("places each tick between the correct neighboring items in DOM order", () => {
+    renderTimeline(doc, makeManifest(["2026-01-05", "2025-11-02"]), () => {});
+    const children = [...doc.querySelectorAll("#timeline > li")].map((li) =>
+      li.classList.contains("timeline__year") ? "year" : li.getAttribute("data-project-id"),
+    );
+    expect(children).toEqual(["2026-01-05", "year", "2025-11-02"]);
+  });
+
+  it("adds no tick within a single year", () => {
+    renderTimeline(doc, makeManifest(["2026-12-03", "2026-11-20", "2026-01-02"]), () => {});
+    expect(doc.querySelectorAll(".timeline__year")).toHaveLength(0);
+  });
+
+  it("adds no tick for a single project", () => {
+    renderTimeline(doc, makeManifest(["2026-12-03"]), () => {});
+    expect(doc.querySelectorAll(".timeline__year")).toHaveLength(0);
+  });
+
+  it("keeps ticks out of the item count but inside the list", () => {
+    renderTimeline(doc, makeManifest(["2026-01-05", "2025-11-02"]), () => {});
+    expect(doc.querySelectorAll(".timeline__item")).toHaveLength(2);
+    expect(doc.querySelectorAll("#timeline > li")).toHaveLength(3);
+  });
+
+  it("keeps the image inside the marker and the date beside it", () => {
+    renderTimeline(doc, makeManifest(["2026-12-03"]), () => {});
+    const marker = doc.querySelector("button.timeline__marker")!;
+    expect(marker.querySelector(".timeline__image")).not.toBeNull();
+    // The date must not be part of the hover-card anchor box.
+    expect(marker.querySelector(".timeline__date")).toBeNull();
+    const item = doc.querySelector(".timeline__item")!;
+    expect(item.querySelector(".timeline__date")).not.toBeNull();
+  });
+});
+
 describe("setActiveMarker", () => {
   it("marks exactly one marker active and clears on null", () => {
     renderTimeline(doc, makeManifest(["2026-12-03", "2026-11-20"]), () => {});
@@ -110,6 +178,11 @@ describe("date formatting", () => {
     expect(formatDate("2026-02-30")).toBe("2026-02-30"); // impossible date
     expect(isIsoDate("2026-12-03")).toBe(true);
     expect(isIsoDate("2026-02-30")).toBe(false);
+  });
+
+  it("extracts the year of a real date and rejects invalid ones", () => {
+    expect(yearOf("2026-12-03")).toBe("2026");
+    expect(yearOf("not-a-date")).toBe("");
   });
 });
 
